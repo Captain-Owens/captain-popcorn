@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { AnimatePresence } from 'framer-motion';
-import { Recommendation, Member, Platform } from '@/lib/types';
+import { Recommendation, Member } from '@/lib/types';
 import { STORAGE_KEY_MEMBER } from '@/lib/constants';
 import { } from '@/lib/constants';
 import BottomNav from '@/components/BottomNav';
@@ -211,25 +211,6 @@ export default function BrowsePage() {
           </button>
         ))}
       </div>
-
-      {/* Platform filter */}
-      <div className="flex gap-2 mb-3 overflow-x-auto pb-1">
-        { .map((p) => (
-          <button
-            key={p.slug}
-            onClick={() => setPlatformFilter(platformFilter === p.slug ? null : p.slug)}
-            className="flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium btn-press transition-colors"
-            style={{
-              backgroundColor: platformFilter === p.slug ? p.color + '22' : '#2B2219',
-              color: platformFilter === p.slug ? p.color : '#D0C8C0',
-              border: `1px solid ${platformFilter === p.slug ? p.color : '#3D3228'}`,
-            }}
-          >
-            {p.label}
-          </button>
-        ))}
-      </div>
-
       {/* Member filter + Sort */}
       <div className="flex gap-2 mb-6">
         <select
