@@ -159,18 +159,15 @@ export default function HomePage() {
   return (
     <div className="px-4 py-6 pb-24">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold">Captain Popcorn</h1>
-          <p className="text-sm text-cream/70">Hey, {memberName}</p>
-        </div>
+      <div className="mb-6">
+        <h1 className="text-xl font-bold mb-1">Good evening {memberName}, whatcha feeling tonight?</h1>
         <button
           onClick={() => {
             localStorage.removeItem(STORAGE_KEY_MEMBER);
             localStorage.removeItem(STORAGE_KEY_MEMBER_NAME);
             router.replace('/pick');
           }}
-          className="text-sm text-cream/70 btn-press"
+          className="text-sm text-cream/50 btn-press"
         >
           Switch user
         </button>
