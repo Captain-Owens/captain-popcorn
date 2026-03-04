@@ -147,7 +147,7 @@ export default function HomePage() {
       {memberId && (
         <div className="mb-6">
           <h2 className="text-lg font-bold mb-3">Discover</h2>
-          <DiscoverCarousel memberId={memberId} />
+          <DiscoverCarousel />
         </div>
       )}
 
