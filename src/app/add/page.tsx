@@ -22,6 +22,7 @@ export default function AddPage() {
   const [success, setSuccess] = useState(false);
   const debounceRef = useRef<NodeJS.Timeout>();
   const [manualTitle, setManualTitle] = useState('');
+  const [duplicateTitle, setDuplicateTitle] = useState<string | null>(null);
   const { showToast } = useToast();
 
   useEffect(() => {
@@ -114,6 +115,47 @@ export default function AddPage() {
               <div className="text-5xl mb-4">🍿</div>
               <p className="text-xl font-bold text-warm-gold">Added.</p>
             </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Duplicate popup */}
+      <AnimatePresence>
+        {duplicateTitle && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-rich-black/90 px-6"
+            onClick={() => setDuplicateTitle(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.8, opacity: 0 }}
+              transition={{ type: 'spring', damping: 20, stiffness: 300 }}
+              className="bg-charcoal rounded-card p-6 text-center max-w-[320px] w-full"
+              style={{ boxShadow: '0 4px 30px rgba(0,0,0,0.5)' }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="text-5xl mb-4">🤝</div>
+              <p className="text-lg font-bold text-cream mb-2">Great minds think alike!</p>
+              <p className="text-sm text-muted mb-4">
+                <span className="text-warm-gold font-medium">{duplicateTitle}</span> has already been added by someone in the crew.
+              </p>
+              <button
+                onClick={() => {
+                  setDuplicateTitle(null);
+                  setSelected(null);
+                  setQuery('');
+                  setManualTitle('');
+                }}
+                className="px-6 py-3 bg-warm-gold text-rich-black rounded-btn font-bold btn-press"
+                style={{ minHeight: 44 }}
+              >
+                Got it
+              </button>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>

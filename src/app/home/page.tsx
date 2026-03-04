@@ -11,6 +11,7 @@ import RecommendationCard from '@/components/RecommendationCard';
 import SkeletonCard from '@/components/SkeletonCard';
 import SlotMachine from '@/components/SlotMachine';
 import DiscoverCarousel from '@/components/DiscoverCarousel';
+import CommentsSheet from '@/components/CommentsSheet';
 
 interface DiscoverItem {
   id: number;
@@ -33,6 +34,15 @@ export default function HomePage() {
   const [feed, setFeed] = useState<Recommendation[]>([]);
   const [loading, setLoading] = useState(true);
   const [slotOpen, setSlotOpen] = useState(false);
+  const [commentsOpen, setCommentsOpen] = useState(false);
+  const [commentRecId, setCommentRecId] = useState('');
+  const [commentRecTitle, setCommentRecTitle] = useState('');
+
+  function handleOpenComments(recId: string, recTitle: string) {
+    setCommentRecId(recId);
+    setCommentRecTitle(recTitle);
+    setCommentsOpen(true);
+  }
   const [discovers, setDiscovers] = useState<DiscoverItem[]>([]);
   const [discoverLoading, setDiscoverLoading] = useState(true);
   const [visibleCount, setVisibleCount] = useState(ITEMS_PER_PAGE);
@@ -222,6 +232,14 @@ export default function HomePage() {
         onClose={() => setSlotOpen(false)}
         memberId={memberId || ''}
         onWatch={handleWatch}
+      />
+
+      <CommentsSheet
+        isOpen={commentsOpen}
+        onClose={() => setCommentsOpen(false)}
+        recommendationId={commentRecId}
+        recommendationTitle={commentRecTitle}
+        memberId={memberId || ''}
       />
 
       <BottomNav />
