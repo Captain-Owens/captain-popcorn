@@ -1,0 +1,37 @@
+CAPTAIN POPCORN - Progress Tracker
+Last updated: 2026-03-03
+
+COMPLETED:
+- Interrogation phase (all product decisions made)
+- PRD.md written
+- APP_FLOW.md written
+- TECH_STACK.md written
+- FRONTEND_GUIDELINES.md written
+- BACKEND_STRUCTURE.md written
+- IMPLEMENTATION_PLAN.md written
+- CLAUDE.md written
+
+IN PROGRESS:
+- Nothing yet. Ready to begin Phase 1: Project Scaffold.
+
+NEXT:
+- Step 1.1: Initialize Next.js project
+- Step 1.2: Install dependencies
+- Step 1.3: Create folder structure
+- Step 1.4: Configure environment variables
+- Step 1.5: Set up Supabase tables
+- Step 1.6: Initialize git
+
+KNOWN ISSUES:
+- None yet.
+
+DECISIONS LOG:
+- App name: Captain Popcorn (working name)
+- 16 users, 8 couples, trust-based name picker (no auth)
+- TMDB API for metadata (not Rotten Tomatoes, no public API)
+- Supabase for database + realtime
+- "I'm Feeling Lucky" = slot machine animation
+- Watched items hidden from user's feed
+- Dark theme, old-timey cinema aesthetic (gold/red/cream)
+- PWA web app, phone-first design, 480px max container
+- Platforms: Netflix, HBO, Prime, Disney+, Hulu, Paramount+, Other

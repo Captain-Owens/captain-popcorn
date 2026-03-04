@@ -1,0 +1,59 @@
+<svg width="1200" height="630" viewBox="0 0 1200 630" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1200" height="630" fill="#1C1410"/>
+
+  <!-- Subtle wallpaper pattern -->
+  <defs>
+    <pattern id="wp" x="0" y="0" width="80" height="120" patternUnits="userSpaceOnUse">
+      <rect width="80" height="120" fill="none"/>
+      <path d="M40 0c2 0 3.5 1.5 5 4s2 5.5 2 9-1 6.5-3 9-3 4-3 6 1 3.5 3 6 3 5.5 3 9-.5 6.5-2 9-3 4-5 4-3.5-1.5-5-4-2-5.5-2-9 1-6.5 3-9 3-4 3-6-1-3.5-3-6-3-5.5-3-9 .5-6.5 2-9S38 0 40 0z" fill="#291d14" fill-opacity="0.5"/>
+      <path d="M40 60c2 0 3.5 1.5 5 4s2 5.5 2 9-1 6.5-3 9-3 4-3 6 1 3.5 3 6 3 5.5 3 9-.5 6.5-2 9-3 4-5 4-3.5-1.5-5-4-2-5.5-2-9 1-6.5 3-9 3-4 3-6-1-3.5-3-6-3-5.5-3-9 .5-6.5 2-9 3-4 5-4z" fill="#291d14" fill-opacity="0.5"/>
+      <path d="M0 0c2 0 3.5 1.5 5 4s2 5.5 2 9-1 6.5-3 9-3 4-3 6 1 3.5 3 6 3 5.5 3 9-.5 6.5-2 9S2 60 0 60" fill="#291d14" fill-opacity="0.5"/>
+      <path d="M80 0c-2 0-3.5 1.5-5 4s-2 5.5-2 9 1 6.5 3 9 3 4 3 6-1 3.5-3 6-3 5.5-3 9 .5 6.5 2 9 3 4 5 4" fill="#291d14" fill-opacity="0.5"/>
+    </pattern>
+  </defs>
+  <rect width="1200" height="630" fill="url(#wp)"/>
+
+  <!-- Vignette -->
+  <radialGradient id="vig" cx="50%" cy="50%">
+    <stop offset="40%" stop-color="transparent"/>
+    <stop offset="100%" stop-color="#0A0603" stop-opacity="0.5"/>
+  </radialGradient>
+  <rect width="1200" height="630" fill="url(#vig)"/>
+
+  <!-- Popcorn bucket -->
+  <g transform="translate(600, 260)">
+    <!-- Bucket body (trapezoid) -->
+    <path d="M-70 20 L-55 120 L55 120 L70 20 Z" fill="#E50914" stroke="#B20710" stroke-width="2"/>
+    <!-- Bucket stripes -->
+    <path d="M-67 40 L67 40" stroke="#FAF3E0" stroke-width="3" stroke-opacity="0.3"/>
+    <path d="M-63 60 L63 60" stroke="#FAF3E0" stroke-width="3" stroke-opacity="0.3"/>
+    <path d="M-59 80 L59 80" stroke="#FAF3E0" stroke-width="3" stroke-opacity="0.3"/>
+    <path d="M-55 100 L55 100" stroke="#FAF3E0" stroke-width="3" stroke-opacity="0.3"/>
+    <!-- Bucket rim -->
+    <rect x="-75" y="12" width="150" height="14" rx="4" fill="#C41017"/>
+
+    <!-- Popcorn kernels -->
+    <circle cx="-35" cy="-5" r="22" fill="#FAF3E0"/>
+    <circle cx="0" cy="-15" r="24" fill="#FFF8E7"/>
+    <circle cx="35" cy="-5" r="22" fill="#FAF3E0"/>
+    <circle cx="-20" cy="-30" r="20" fill="#FFF8E7"/>
+    <circle cx="20" cy="-30" r="20" fill="#FAF3E0"/>
+    <circle cx="-45" cy="-20" r="16" fill="#FFF0D0"/>
+    <circle cx="45" cy="-20" r="16" fill="#FFF0D0"/>
+    <circle cx="0" cy="-45" r="18" fill="#FFF8E7"/>
+    <circle cx="-30" cy="-45" r="14" fill="#FAF3E0"/>
+    <circle cx="30" cy="-45" r="14" fill="#FAF3E0"/>
+    <circle cx="-10" cy="-60" r="12" fill="#FFF0D0"/>
+    <circle cx="15" cy="-58" r="13" fill="#FFF8E7"/>
+
+    <!-- Subtle shadows on kernels -->
+    <circle cx="-35" cy="0" r="22" fill="#E8D5A0" fill-opacity="0.2"/>
+    <circle cx="35" cy="0" r="22" fill="#E8D5A0" fill-opacity="0.2"/>
+  </g>
+
+  <!-- Title -->
+  <text x="600" y="450" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-weight="800" font-size="64" fill="#E8A317">Captain Popcorn</text>
+
+  <!-- Subtitle -->
+  <text x="600" y="500" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-weight="400" font-size="28" fill="#FAF3E0" fill-opacity="0.7">What should we watch tonight?</text>
+</svg>
