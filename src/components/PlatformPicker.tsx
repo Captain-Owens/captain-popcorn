@@ -32,7 +32,7 @@ export default function PlatformPicker({ selected, onSelect }: PlatformPickerPro
             style={{
               backgroundColor: isActive ? p.color + '22' : '#2B2219',
               border: '2px solid ' + (isActive ? p.color : '#3D3228'),
-              color: isActive ? p.color : '#8A8A7A',
+              color: isActive ? p.color : '#B5ADA4',
             }}
           >
             {PLATFORM_LABELS[p.slug]}

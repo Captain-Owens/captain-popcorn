@@ -7,7 +7,7 @@ export const PLATFORMS: { slug: Platform; label: string; color: string }[] = [
   { slug: 'disney', label: 'Disney+', color: '#113CCF' },
   { slug: 'hulu', label: 'Hulu', color: '#1CE783' },
   { slug: 'paramount', label: 'Paramount+', color: '#0064FF' },
-  { slug: 'other', label: 'Other', color: '#8A8A7A' },
+  { slug: 'other', label: 'Other', color: '#B5ADA4' },
 ];
 
 export const TMDB_IMAGE_BASE = 'https://image.tmdb.org/t/p';

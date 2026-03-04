@@ -17,9 +17,9 @@ export default function RatingInput({ value, onChange }: RatingInputProps) {
             onClick={() => onChange(isActive ? null : n)}
             className="w-12 h-12 rounded-btn font-bold text-lg btn-press transition-all"
             style={{
-              backgroundColor: isActive ? '#E8A317' : '#2A2A2A',
-              color: isActive ? '#1A1A1A' : '#8A8A7A',
-              border: `2px solid ${isActive ? '#E8A317' : '#3A3A3A'}`,
+              backgroundColor: isActive ? '#E8A317' : '#2B2219',
+              color: isActive ? '#1C1410' : '#B5ADA4',
+              border: `2px solid ${isActive ? '#E8A317' : '#4A3D32'}`,
             }}
           >
             {n}

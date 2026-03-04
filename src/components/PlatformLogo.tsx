@@ -9,7 +9,7 @@ interface PlatformLogoProps {
 }
 
 export default function PlatformLogo({ platform, size = 20, colored = true }: PlatformLogoProps) {
-  const gray = '#8A8A7A';
+  const gray = '#B5ADA4';
   const s = size;
 
   switch (platform) {
@@ -26,7 +26,7 @@ export default function PlatformLogo({ platform, size = 20, colored = true }: Pl
     case 'hbo':
       return (
         <svg width={s * 1.4} height={s} viewBox="0 0 56 24">
-          <rect x="0" y="0" width="56" height="24" rx="4" fill={colored ? '#000' : '#2A2A2A'} />
+          <rect x="0" y="0" width="56" height="24" rx="4" fill={colored ? '#000' : '#2B2219'} />
           <text x="28" y="17.5" textAnchor="middle" fontWeight="900" fontSize="15" letterSpacing="2" fontFamily="'Helvetica Neue', Arial, sans-serif" fill={colored ? '#fff' : gray}>HBO</text>
         </svg>
       );
@@ -48,7 +48,7 @@ export default function PlatformLogo({ platform, size = 20, colored = true }: Pl
     case 'hulu':
       return (
         <svg width={s * 1.2} height={s} viewBox="0 0 48 24">
-          <rect x="0" y="0" width="48" height="24" rx="4" fill={colored ? '#1CE783' : '#2A2A2A'} />
+          <rect x="0" y="0" width="48" height="24" rx="4" fill={colored ? '#1CE783' : '#2B2219'} />
           <text x="24" y="17" textAnchor="middle" fontWeight="900" fontSize="14" letterSpacing="1" fontFamily="'Helvetica Neue', Arial, sans-serif" fill={colored ? '#fff' : gray}>hulu</text>
         </svg>
       );
@@ -65,10 +65,10 @@ export default function PlatformLogo({ platform, size = 20, colored = true }: Pl
     case 'other':
       return (
         <svg width={s} height={s} viewBox="0 0 24 24" fill="none">
-          <circle cx="12" cy="12" r="9" stroke={colored ? '#8A8A7A' : gray} strokeWidth="1.5" />
-          <circle cx="12" cy="12" r="1.5" fill={colored ? '#8A8A7A' : gray} />
-          <circle cx="8" cy="12" r="1.5" fill={colored ? '#8A8A7A' : gray} />
-          <circle cx="16" cy="12" r="1.5" fill={colored ? '#8A8A7A' : gray} />
+          <circle cx="12" cy="12" r="9" stroke={colored ? '#B5ADA4' : gray} strokeWidth="1.5" />
+          <circle cx="12" cy="12" r="1.5" fill={colored ? '#B5ADA4' : gray} />
+          <circle cx="8" cy="12" r="1.5" fill={colored ? '#B5ADA4' : gray} />
+          <circle cx="16" cy="12" r="1.5" fill={colored ? '#B5ADA4' : gray} />
         </svg>
       );
     default:

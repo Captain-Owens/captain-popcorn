@@ -189,7 +189,7 @@ export default function BrowsePage() {
             className="px-3 py-2 rounded-btn text-xs font-medium btn-press min-h-[36px] transition-colors"
             style={{
               backgroundColor: typeFilter === t ? '#E8A317' : '#2B2219',
-              color: typeFilter === t ? '#1C1410' : '#8A8A7A',
+              color: typeFilter === t ? '#1C1410' : '#B5ADA4',
             }}
           >
             {t === 'all' ? 'All' : t === 'movie' ? 'Movies' : 'Shows'}
@@ -206,7 +206,7 @@ export default function BrowsePage() {
             className="flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium btn-press transition-colors"
             style={{
               backgroundColor: platformFilter === p.slug ? p.color + '22' : '#2B2219',
-              color: platformFilter === p.slug ? p.color : '#8A8A7A',
+              color: platformFilter === p.slug ? p.color : '#B5ADA4',
               border: `1px solid ${platformFilter === p.slug ? p.color : '#3D3228'}`,
             }}
           >

@@ -32,11 +32,11 @@ function PopcornIcon() {
       <rect x="16" y="28" width="32" height="32" rx="4" fill="#E8A317" stroke="#8B1A1A" strokeWidth="2" />
       <line x1="24" y1="28" x2="20" y2="60" stroke="#8B1A1A" strokeWidth="1.5" />
       <line x1="40" y1="28" x2="44" y2="60" stroke="#8B1A1A" strokeWidth="1.5" />
-      <circle cx="24" cy="18" r="8" fill="#FAF3E0" stroke="#E8A317" strokeWidth="1.5" />
-      <circle cx="40" cy="18" r="8" fill="#FAF3E0" stroke="#E8A317" strokeWidth="1.5" />
-      <circle cx="32" cy="14" r="9" fill="#FAF3E0" stroke="#E8A317" strokeWidth="1.5" />
-      <circle cx="20" cy="24" r="6" fill="#FAF3E0" stroke="#E8A317" strokeWidth="1.5" />
-      <circle cx="44" cy="24" r="6" fill="#FAF3E0" stroke="#E8A317" strokeWidth="1.5" />
+      <circle cx="24" cy="18" r="8" fill="#FFFFFF" stroke="#E8A317" strokeWidth="1.5" />
+      <circle cx="40" cy="18" r="8" fill="#FFFFFF" stroke="#E8A317" strokeWidth="1.5" />
+      <circle cx="32" cy="14" r="9" fill="#FFFFFF" stroke="#E8A317" strokeWidth="1.5" />
+      <circle cx="20" cy="24" r="6" fill="#FFFFFF" stroke="#E8A317" strokeWidth="1.5" />
+      <circle cx="44" cy="24" r="6" fill="#FFFFFF" stroke="#E8A317" strokeWidth="1.5" />
     </svg>
   );
 }

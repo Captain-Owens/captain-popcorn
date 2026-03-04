@@ -85,7 +85,7 @@ export default function AddPage() {
 
       if (res.ok) {
         setSuccess(true);
-        setTimeout(() => router.push('/home'), 1000);
+        setTimeout(() => router.push('/home'), 600);
       }
     } catch {
       // Error handling

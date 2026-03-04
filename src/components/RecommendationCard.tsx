@@ -38,7 +38,7 @@ export default function RecommendationCard({
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -8 }}
-      transition={{ duration: 0.2 }}
+      transition={{ duration: 0.12 }}
       className="flex gap-3 p-4 bg-charcoal rounded-card relative"
     >
       {/* Delete confirmation overlay */}
