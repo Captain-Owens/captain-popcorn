@@ -40,8 +40,19 @@ export default function BottomNav() {
   const pathname = usePathname();
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-rich-black border-t border-smoke">
-      <div className="max-w-[480px] mx-auto flex items-center justify-around h-16 pb-[env(safe-area-inset-bottom)]">
+    <nav
+      style={{
+        position: 'fixed',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        zIndex: 9999,
+        backgroundColor: '#1C1410',
+        borderTop: '1px solid #3D3228',
+        paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+      }}
+    >
+      <div className="max-w-[480px] mx-auto flex items-center justify-around" style={{ height: 64 }}>
         {NAV_ITEMS.map((item) => {
           const isActive = pathname === item.href;
           return (
