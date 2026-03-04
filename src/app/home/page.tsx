@@ -28,8 +28,6 @@ export default function HomePage() {
   const [loading, setLoading] = useState(true);
   const [slotOpen, setSlotOpen] = useState(false);
   const [showCount, setShowCount] = useState(5);
-  const [discoverItems, setDiscoverItems] = useState<any[]>([]);
-  const [discoverLoading, setDiscoverLoading] = useState(true);
 
   // Comments
   const [commentsOpen, setCommentsOpen] = useState(false);
@@ -62,19 +60,6 @@ export default function HomePage() {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
-
-  // Fetch discover items
-  useEffect(() => {
-    if (!memberId) return;
-    setDiscoverLoading(true);
-    fetch('/api/discover')
-      .then((r) => r.json())
-      .then((data) => {
-        if (Array.isArray(data)) setDiscoverItems(data);
-        setDiscoverLoading(false);
-      })
-      .catch(() => setDiscoverLoading(false));
-  }, [memberId]);
 
   // Realtime
   useEffect(() => {
@@ -152,17 +137,23 @@ export default function HomePage() {
       {/* Feeling Lucky */}
       <button
         onClick={() => setSlotOpen(true)}
-        className="w-full bg-charcoal rounded-card p-4 flex items-center justify-center gap-3 min-h-[56px] btn-press border border-smoke hover:border-warm-gold transition-colors mb-6"
+        className="w-full rounded-card flex flex-col items-center justify-center gap-3 min-h-[140px] btn-press border-2 border-warm-gold mb-6 relative overflow-hidden"
+        style={{
+          background: 'linear-gradient(135deg, #2A2A2A 0%, #1A1A1A 50%, #2A2A2A 100%)',
+          animation: 'lucky-glow 3s ease-in-out infinite',
+          boxShadow: '0 0 30px rgba(232, 163, 23, 0.15), inset 0 1px 0 rgba(255,255,255,0.05)',
+        }}
       >
-        <span className="text-2xl">🎰</span>
-        <span className="text-sm font-bold text-warm-gold">I'm Feeling Lucky</span>
+        <span className="text-5xl" style={{ filter: 'drop-shadow(0 2px 8px rgba(232,163,23,0.4))' }}>🎰</span>
+        <span className="text-lg font-bold text-warm-gold tracking-wide">I'm Feeling Lucky</span>
+        <span className="text-xs text-muted">Tap for a random pick from the crew</span>
       </button>
 
       {/* Discover Carousel */}
       {memberId && (
         <div className="mb-6">
           <h2 className="text-lg font-bold mb-3">Discover</h2>
-          <DiscoverCarousel items={discoverItems} loading={discoverLoading} />
+          <DiscoverCarousel memberId={memberId} />
         </div>
       )}
 
