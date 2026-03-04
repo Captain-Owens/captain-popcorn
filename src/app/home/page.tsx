@@ -172,7 +172,7 @@ export default function HomePage() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold">Captain Popcorn</h1>
-          <p className="text-sm text-muted">Hey, {memberName}</p>
+          <p className="text-sm text-cream/70">Hey, {memberName}</p>
         </div>
         <button
           onClick={() => {

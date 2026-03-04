@@ -18,7 +18,7 @@ export default function RatingInput({ value, onChange }: RatingInputProps) {
             className="w-12 h-12 rounded-btn font-bold text-lg btn-press transition-all"
             style={{
               backgroundColor: isActive ? '#E8A317' : '#2B2219',
-              color: isActive ? '#1C1410' : '#B5ADA4',
+              color: isActive ? '#1C1410' : '#D0C8C0',
               border: `2px solid ${isActive ? '#E8A317' : '#4A3D32'}`,
             }}
           >

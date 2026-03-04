@@ -104,7 +104,7 @@ export default function PickPage() {
     <div className="px-4 py-8 min-h-dvh flex flex-col">
       <div className="text-center mb-8">
         <h1 className="text-3xl font-bold mb-2">Captain Popcorn</h1>
-        <p className="text-muted">Who are you?</p>
+        <p className="text-cream/70">Who are you?</p>
       </div>
 
       {members.length > 0 && !showJoin && (
@@ -169,7 +169,7 @@ export default function PickPage() {
       ) : (
         <div className="flex flex-col gap-4">
           <div>
-            <label className="block text-sm text-muted mb-2">Your name</label>
+            <label className="block text-sm text-cream mb-2">Your name</label>
             <input
               type="text"
               value={joinName}
@@ -180,7 +180,7 @@ export default function PickPage() {
             />
           </div>
           <div>
-            <label className="block text-sm text-muted mb-2">
+            <label className="block text-sm text-cream mb-2">
               Partner name (optional)
             </label>
             <input

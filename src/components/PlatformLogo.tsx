@@ -9,7 +9,7 @@ interface PlatformLogoProps {
 }
 
 export default function PlatformLogo({ platform, size = 20, colored = true }: PlatformLogoProps) {
-  const gray = '#B5ADA4';
+  const gray = '#D0C8C0';
   const s = size;
 
   switch (platform) {
@@ -65,10 +65,10 @@ export default function PlatformLogo({ platform, size = 20, colored = true }: Pl
     case 'other':
       return (
         <svg width={s} height={s} viewBox="0 0 24 24" fill="none">
-          <circle cx="12" cy="12" r="9" stroke={colored ? '#B5ADA4' : gray} strokeWidth="1.5" />
-          <circle cx="12" cy="12" r="1.5" fill={colored ? '#B5ADA4' : gray} />
-          <circle cx="8" cy="12" r="1.5" fill={colored ? '#B5ADA4' : gray} />
-          <circle cx="16" cy="12" r="1.5" fill={colored ? '#B5ADA4' : gray} />
+          <circle cx="12" cy="12" r="9" stroke={colored ? '#D0C8C0' : gray} strokeWidth="1.5" />
+          <circle cx="12" cy="12" r="1.5" fill={colored ? '#D0C8C0' : gray} />
+          <circle cx="8" cy="12" r="1.5" fill={colored ? '#D0C8C0' : gray} />
+          <circle cx="16" cy="12" r="1.5" fill={colored ? '#D0C8C0' : gray} />
         </svg>
       );
     default:

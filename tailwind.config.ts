@@ -15,7 +15,7 @@ const config: Config = {
         'rich-black': '#1C1410',
         'charcoal': '#2B2219',
         'smoke': '#4A3D32',
-        'muted': '#B0A898',
+        'muted': '#D0C8C0',
       },
       fontFamily: {
         sans: ['-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],

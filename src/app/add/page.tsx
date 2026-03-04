@@ -119,7 +119,7 @@ export default function AddPage() {
       {/* Title search */}
       {!selected ? (
         <div className="mb-4">
-          <label className="block text-sm text-muted mb-2">
+          <label className="block text-sm text-cream mb-2">
             What did you watch?
           </label>
           <input
@@ -224,7 +224,7 @@ export default function AddPage() {
 
       {/* Platform */}
       <div className="mb-4">
-        <label className="block text-sm text-muted mb-2">
+        <label className="block text-sm text-cream mb-2">
           Where to watch (optional)
         </label>
         <PlatformPicker selected={platform} onSelect={setPlatform} />
@@ -232,7 +232,7 @@ export default function AddPage() {
 
       {/* Comment */}
       <div className="mb-6">
-        <label className="block text-sm text-muted mb-2">
+        <label className="block text-sm text-cream mb-2">
           One-liner (optional)
         </label>
         <input
