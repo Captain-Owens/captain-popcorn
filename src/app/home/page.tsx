@@ -28,6 +28,8 @@ export default function HomePage() {
   const [loading, setLoading] = useState(true);
   const [slotOpen, setSlotOpen] = useState(false);
   const [showCount, setShowCount] = useState(5);
+  const [discoverItems, setDiscoverItems] = useState<any[]>([]);
+  const [discoverLoading, setDiscoverLoading] = useState(true);
 
   // Comments
   const [commentsOpen, setCommentsOpen] = useState(false);
@@ -60,6 +62,19 @@ export default function HomePage() {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  // Fetch discover items
+  useEffect(() => {
+    if (!memberId) return;
+    setDiscoverLoading(true);
+    fetch('/api/discover')
+      .then((r) => r.json())
+      .then((data) => {
+        if (Array.isArray(data)) setDiscoverItems(data);
+        setDiscoverLoading(false);
+      })
+      .catch(() => setDiscoverLoading(false));
+  }, [memberId]);
 
   // Realtime
   useEffect(() => {
@@ -134,7 +149,7 @@ export default function HomePage() {
         </button>
       </div>
 
-      {/* Feeling Lucky */}
+      {/* Feeling Lucky - BIG hero button */}
       <button
         onClick={() => setSlotOpen(true)}
         className="w-full rounded-card flex flex-col items-center justify-center gap-3 min-h-[140px] btn-press border-2 border-warm-gold mb-6 relative overflow-hidden"
@@ -153,7 +168,7 @@ export default function HomePage() {
       {memberId && (
         <div className="mb-6">
           <h2 className="text-lg font-bold mb-3">Discover</h2>
-          <DiscoverCarousel memberId={memberId} />
+          <DiscoverCarousel items={discoverItems} loading={discoverLoading} />
         </div>
       )}
 
