@@ -161,6 +161,9 @@ export default function HomePage() {
     <div className="px-4 py-6 pb-24">
       {/* Header */}
       <div className="mb-6">
+        <div className="flex justify-center mb-4">
+          <Logo />
+        </div>
         <h1 className="text-xl font-bold mb-1">Good evening {memberName}, whatcha feeling tonight?</h1>
         <button
           onClick={() => {
