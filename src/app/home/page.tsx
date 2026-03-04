@@ -10,8 +10,12 @@ import BottomNav from '@/components/BottomNav';
 import RecommendationCard from '@/components/RecommendationCard';
 import SkeletonCard from '@/components/SkeletonCard';
 import SlotMachine from '@/components/SlotMachine';
-import DiscoverCarousel from '@/components/DiscoverCarousel';
 import CommentsSheet from '@/components/CommentsSheet';
+
+let DiscoverCarousel: any = null;
+try {
+  DiscoverCarousel = require('@/components/DiscoverCarousel').default;
+} catch {}
 
 interface DiscoverItem {
   id: number;
@@ -22,7 +26,6 @@ interface DiscoverItem {
   tmdb_rating: number | null;
   type: 'movie' | 'show';
   overview?: string;
-  reason?: string;
 }
 
 const ITEMS_PER_PAGE = 5;
@@ -34,18 +37,14 @@ export default function HomePage() {
   const [feed, setFeed] = useState<Recommendation[]>([]);
   const [loading, setLoading] = useState(true);
   const [slotOpen, setSlotOpen] = useState(false);
-  const [commentsOpen, setCommentsOpen] = useState(false);
-  const [commentRecId, setCommentRecId] = useState('');
-  const [commentRecTitle, setCommentRecTitle] = useState('');
-
-  function handleOpenComments(recId: string, recTitle: string) {
-    setCommentRecId(recId);
-    setCommentRecTitle(recTitle);
-    setCommentsOpen(true);
-  }
   const [discovers, setDiscovers] = useState<DiscoverItem[]>([]);
   const [discoverLoading, setDiscoverLoading] = useState(true);
   const [visibleCount, setVisibleCount] = useState(ITEMS_PER_PAGE);
+
+  // Comments
+  const [commentsOpen, setCommentsOpen] = useState(false);
+  const [commentRecId, setCommentRecId] = useState('');
+  const [commentRecTitle, setCommentRecTitle] = useState('');
 
   useEffect(() => {
     const id = localStorage.getItem(STORAGE_KEY_MEMBER);
@@ -61,13 +60,11 @@ export default function HomePage() {
   const fetchData = useCallback(async () => {
     if (!memberId) return;
     setLoading(true);
-
     const feedRes = await fetch(
       `/api/recommendations?exclude_watched_by=${memberId}&sort=newest&limit=20`
     );
     const feedData = await feedRes.json();
     if (Array.isArray(feedData)) setFeed(feedData);
-
     setLoading(false);
   }, [memberId]);
 
@@ -118,6 +115,12 @@ export default function HomePage() {
     fetchData();
   }
 
+  function handleOpenComments(recId: string, recTitle: string) {
+    setCommentRecId(recId);
+    setCommentRecTitle(recTitle);
+    setCommentsOpen(true);
+  }
+
   const greeting = (() => {
     const hour = new Date().getHours();
     if (hour < 12) return 'Good morning';
@@ -130,11 +133,19 @@ export default function HomePage() {
 
   return (
     <div className="px-4 py-6 pb-24 page-enter">
-      {/* Header */}
+      {/* Logo */}
+      <div className="flex justify-center mb-4">
+        <div className="flex items-center gap-2">
+          <span className="text-3xl">🍿</span>
+          <h1 className="text-2xl font-bold text-warm-gold tracking-tight">Captain Popcorn</h1>
+        </div>
+      </div>
+
+      {/* Greeting */}
       <div className="mb-6">
-        <h1 className="text-xl font-bold">
+        <p className="text-lg font-medium text-cream">
           {greeting} {memberName}, whatcha feeling tonight?
-        </h1>
+        </p>
         <button
           onClick={() => {
             localStorage.removeItem(STORAGE_KEY_MEMBER);
@@ -148,7 +159,7 @@ export default function HomePage() {
         </button>
       </div>
 
-      {/* Feeling Lucky - big, glowing, distinct */}
+      {/* Feeling Lucky */}
       <button
         onClick={() => setSlotOpen(true)}
         className="w-full rounded-card p-6 flex items-center justify-center gap-4 mb-6 btn-press lucky-glow"
@@ -170,13 +181,12 @@ export default function HomePage() {
         </div>
       </button>
 
-      {/* Discover carousel - full width */}
-      <div className="mb-6">
-        <DiscoverCarousel
-          items={discovers}
-          loading={discoverLoading}
-        />
-      </div>
+      {/* Discover carousel */}
+      {DiscoverCarousel && (
+        <div className="mb-6">
+          <DiscoverCarousel items={discovers} loading={discoverLoading} />
+        </div>
+      )}
 
       {/* Recent feed */}
       <h2 className="text-lg font-bold mb-4">Recently added</h2>
@@ -210,6 +220,7 @@ export default function HomePage() {
                   rec={rec}
                   onWatch={handleWatch}
                   onUnwatch={handleUnwatch}
+                  onComment={handleOpenComments}
                 />
               ))}
             </AnimatePresence>
