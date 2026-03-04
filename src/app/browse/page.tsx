@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { AnimatePresence } from 'framer-motion';
 import { Recommendation, Member, Platform } from '@/lib/types';
 import { STORAGE_KEY_MEMBER } from '@/lib/constants';
-import { PLATFORMS } from '@/lib/constants';
+import { } from '@/lib/constants';
 import BottomNav from '@/components/BottomNav';
 import RecommendationCard from '@/components/RecommendationCard';
 import SkeletonCard from '@/components/SkeletonCard';
@@ -100,7 +100,7 @@ export default function BrowsePage() {
     }
 
     setLoading(false);
-  }, [memberId, typeFilter, platformFilter, memberFilter, sortBy]);
+  }, [memberId, typeFilter, memberFilter, sortBy]);
 
   useEffect(() => {
     fetchData();
@@ -214,7 +214,7 @@ export default function BrowsePage() {
 
       {/* Platform filter */}
       <div className="flex gap-2 mb-3 overflow-x-auto pb-1">
-        {PLATFORMS.map((p) => (
+        { .map((p) => (
           <button
             key={p.slug}
             onClick={() => setPlatformFilter(platformFilter === p.slug ? null : p.slug)}
