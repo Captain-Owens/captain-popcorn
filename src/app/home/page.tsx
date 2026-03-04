@@ -27,7 +27,8 @@ export default function HomePage() {
   const [memberName, setMemberName] = useState<string>('');
   const [feed, setFeed] = useState<Recommendation[]>([]);
   const [topRated, setTopRated] = useState<Recommendation | null>(null);
-  const [discover, setDiscover] = useState<DiscoverItem | null>(null);
+  const [discovers, setDiscovers] = useState<DiscoverItem[]>([]);
+  const [discoverIdx, setDiscoverIdx] = useState(0);
   const [loading, setLoading] = useState(true);
   const [slotOpen, setSlotOpen] = useState(false);
 
@@ -59,8 +60,8 @@ export default function HomePage() {
     if (Array.isArray(feedData)) setFeed(feedData);
     if (topData) setTopRated(topData);
     if (Array.isArray(discoverData) && discoverData.length > 0) {
-      // Pick a random discover suggestion each load
-      setDiscover(discoverData[Math.floor(Math.random() * discoverData.length)]);
+      setDiscovers(discoverData);
+      setDiscoverIdx(0);
     }
 
     setLoading(false);
@@ -175,13 +176,14 @@ export default function HomePage() {
         </button>
       </div>
 
-      {/* Row 1: Feeling Lucky - full width */}
+      {/* Row 1: Feeling Lucky - full width, big */}
       <button
         onClick={() => setSlotOpen(true)}
-        className="w-full bg-charcoal rounded-card p-6 flex items-center justify-center gap-4 min-h-[80px] btn-press border border-smoke hover:border-warm-gold transition-colors mb-3"
+        className="w-full bg-charcoal rounded-card p-8 flex flex-col items-center justify-center gap-3 min-h-[160px] btn-press border border-smoke hover:border-warm-gold transition-colors mb-3"
       >
-        <span className="text-3xl">🎰</span>
-        <span className="text-lg font-bold text-warm-gold">Feeling lucky?</span>
+        <span className="text-5xl">🎰</span>
+        <span className="text-xl font-bold text-warm-gold">Feeling lucky?</span>
+        <span className="text-xs text-cream/50">Tap to spin</span>
       </button>
 
       {/* Row 2: Top Pick + Discover */}
@@ -225,21 +227,29 @@ export default function HomePage() {
           )}
         </div>
 
-        {/* Discover */}
+        {/* Discover - swipeable */}
         <div className="bg-charcoal rounded-card p-3 flex flex-col min-h-[180px] border border-smoke overflow-hidden">
-          <span className="text-xs text-cream/50 mb-2 font-medium">Discover</span>
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs text-cream/50 font-medium">Discover</span>
+            {discovers.length > 1 && (
+              <span className="text-xs text-cream/30">{discoverIdx + 1}/{discovers.length}</span>
+            )}
+          </div>
           {loading ? (
             <div className="flex-1 flex flex-col gap-2">
               <div className="skeleton flex-1 rounded-btn" />
               <div className="skeleton h-3 w-3/4" />
             </div>
-          ) : discover ? (
-            <div className="flex-1 flex flex-col">
+          ) : discovers.length > 0 ? (
+            <div
+              className="flex-1 flex flex-col cursor-pointer"
+              onClick={() => setDiscoverIdx((prev) => (prev + 1) % discovers.length)}
+            >
               <div className="flex-1 rounded-btn overflow-hidden bg-smoke mb-2">
-                {discover.poster_url ? (
+                {discovers[discoverIdx].poster_url ? (
                   <img
-                    src={discover.poster_url}
-                    alt={discover.title}
+                    src={discovers[discoverIdx].poster_url}
+                    alt={discovers[discoverIdx].title}
                     className="w-full h-full object-cover"
                   />
                 ) : (
@@ -249,10 +259,10 @@ export default function HomePage() {
                 )}
               </div>
               <p className="text-xs font-medium text-cream truncate">
-                {discover.title}
+                {discovers[discoverIdx].title}
               </p>
               <p className="text-xs text-warm-gold truncate">
-                {discover.reason}
+                {discovers[discoverIdx].reason}
               </p>
             </div>
           ) : (
