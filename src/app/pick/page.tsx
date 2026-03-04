@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { STORAGE_KEY_MEMBER, STORAGE_KEY_MEMBER_NAME } from '@/lib/constants';
 import { Member } from '@/lib/types';
+import Logo from '@/components/Logo';
 
 export default function PickPage() {
   const router = useRouter();
@@ -103,7 +104,7 @@ export default function PickPage() {
   return (
     <div className="px-4 py-8 min-h-dvh flex flex-col">
       <div className="text-center mb-8">
-        <h1 className="text-3xl font-bold mb-2">Captain Popcorn</h1>
+<Logo />
         <p className="text-cream/70">Who are you?</p>
       </div>
 

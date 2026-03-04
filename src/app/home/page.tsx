@@ -10,6 +10,7 @@ import BottomNav from '@/components/BottomNav';
 import RecommendationCard from '@/components/RecommendationCard';
 import SkeletonCard from '@/components/SkeletonCard';
 import SlotMachine from '@/components/SlotMachine';
+import Logo from '@/components/Logo';
 
 interface DiscoverItem {
   tmdb_id: number;
