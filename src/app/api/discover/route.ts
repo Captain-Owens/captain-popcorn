@@ -72,6 +72,7 @@ export async function GET() {
               genre: m.genre_ids?.map((gid: number) => TMDB_GENRES[gid]).filter(Boolean).join(', ') || null,
               tmdb_rating: m.vote_average ? Math.round(m.vote_average * 10) / 10 : null,
               type: 'movie',
+              overview: m.overview || null,
               reason: `Based on your crew's love of ${topGenres.slice(0, 2).join(' and ')}`,
             });
           }
@@ -96,6 +97,7 @@ export async function GET() {
               genre: t.genre_ids?.map((gid: number) => TMDB_GENRES[gid]).filter(Boolean).join(', ') || null,
               tmdb_rating: t.vote_average ? Math.round(t.vote_average * 10) / 10 : null,
               type: 'show',
+              overview: t.overview || null,
               reason: `Based on your crew's love of ${topGenres.slice(0, 2).join(' and ')}`,
             });
           }
