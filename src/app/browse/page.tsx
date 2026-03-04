@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { AnimatePresence } from 'framer-motion';
 import { Recommendation, Member } from '@/lib/types';
@@ -11,11 +11,35 @@ import SkeletonCard from '@/components/SkeletonCard';
 import SearchOverlay from '@/components/SearchOverlay';
 import CommentsSheet from '@/components/CommentsSheet';
 
+// Genre definitions with TMDB genre string matching
+const GENRES = [
+  { label: 'All', match: null },
+  { label: 'Action', match: ['Action'] },
+  { label: 'Comedy', match: ['Comedy'] },
+  { label: 'Drama', match: ['Drama'] },
+  { label: 'Sci-Fi', match: ['Sci-Fi', 'Science Fiction'] },
+  { label: 'Adventure', match: ['Adventure'] },
+  { label: 'Western', match: ['Western'] },
+  { label: 'Rom-Com', match: ['Romance'] },
+  { label: 'Animation', match: ['Animation'] },
+  { label: 'Documentary', match: ['Documentary'] },
+  { label: 'True Crime', match: ['Crime'] },
+  { label: 'Kid Friendly', match: ['Family', 'Kids', 'Animation'] },
+] as const;
+
 interface WatchedMember {
   id: string;
   name: string;
   watched_count: number;
   items?: { title: string; poster_url: string | null; year: number | null; tmdb_rating: number | null }[];
+}
+
+interface PersonResult {
+  id: number;
+  name: string;
+  known_for: string;
+  profile_url: string | null;
+  credit_count: number;
 }
 
 export default function BrowsePage() {
@@ -37,6 +61,15 @@ export default function BrowsePage() {
   const [typeFilter, setTypeFilter] = useState<'all' | 'movie' | 'show'>('all');
   const [memberFilter, setMemberFilter] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<'newest' | 'top_rated' | 'most_watched'>('newest');
+  const [genreFilter, setGenreFilter] = useState<string>('All');
+
+  // Actor/Director search
+  const [personQuery, setPersonQuery] = useState('');
+  const [personResults, setPersonResults] = useState<PersonResult[]>([]);
+  const [personSearching, setPersonSearching] = useState(false);
+  const [matchingTmdbIds, setMatchingTmdbIds] = useState<number[] | null>(null);
+  const [activePersonName, setActivePersonName] = useState<string | null>(null);
+  const personDebounce = useRef<NodeJS.Timeout>();
 
   // Comments
   const [commentsOpen, setCommentsOpen] = useState(false);
@@ -77,7 +110,7 @@ export default function BrowsePage() {
       const [recsRes, membersRes, allRes] = await Promise.all([
         fetch(`/api/recommendations?${params.toString()}`),
         fetch('/api/members'),
-        fetch(`/api/recommendations?limit=100`),
+        fetch(`/api/recommendations?limit=200`),
       ]);
 
       const recsData = await recsRes.json();
@@ -110,6 +143,26 @@ export default function BrowsePage() {
     }
   }, [activeTab]);
 
+  // Person search debounce
+  useEffect(() => {
+    if (personQuery.length < 2) {
+      setPersonResults([]);
+      return;
+    }
+    if (personDebounce.current) clearTimeout(personDebounce.current);
+    personDebounce.current = setTimeout(async () => {
+      setPersonSearching(true);
+      try {
+        const res = await fetch(`/api/search/person?q=${encodeURIComponent(personQuery)}`);
+        const data = await res.json();
+        if (data.people) setPersonResults(data.people);
+        if (data.matching_tmdb_ids) setMatchingTmdbIds(data.matching_tmdb_ids);
+      } catch {}
+      setPersonSearching(false);
+    }, 400);
+    return () => { if (personDebounce.current) clearTimeout(personDebounce.current); };
+  }, [personQuery]);
+
   async function handleWatch(recId: string) {
     if (!memberId) return;
     setRecs((prev) => prev.filter((r) => r.id !== recId));
@@ -135,6 +188,39 @@ export default function BrowsePage() {
     setCommentsRecTitle(recTitle);
     setCommentsOpen(true);
   }
+
+  function selectPerson(person: PersonResult) {
+    setActivePersonName(person.name);
+    setPersonQuery('');
+    setPersonResults([]);
+  }
+
+  function clearPersonFilter() {
+    setActivePersonName(null);
+    setMatchingTmdbIds(null);
+    setPersonQuery('');
+    setPersonResults([]);
+  }
+
+  // Apply genre + person filters to recs
+  const filteredRecs = recs.filter((rec) => {
+    // Genre filter
+    if (genreFilter !== 'All') {
+      const genreDef = GENRES.find((g) => g.label === genreFilter);
+      if (genreDef && genreDef.match) {
+        const recGenre = (rec.genre || '').toLowerCase();
+        const matches = genreDef.match.some((g) => recGenre.includes(g.toLowerCase()));
+        if (!matches) return false;
+      }
+    }
+
+    // Person filter (actor/director)
+    if (matchingTmdbIds && activePersonName) {
+      if (!rec.tmdb_id || !matchingTmdbIds.includes(rec.tmdb_id)) return false;
+    }
+
+    return true;
+  });
 
   return (
     <div className="px-4 py-6 pb-24">
@@ -195,8 +281,29 @@ export default function BrowsePage() {
             ))}
           </div>
 
+          {/* Genre filter - horizontal scroll */}
+          <div
+            className="flex gap-2 mb-3 overflow-x-auto pb-1"
+            style={{ WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+          >
+            {GENRES.map((g) => (
+              <button
+                key={g.label}
+                onClick={() => setGenreFilter(g.label)}
+                className="flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium btn-press transition-colors"
+                style={{
+                  backgroundColor: genreFilter === g.label ? '#E8A317' : '#2A2A2A',
+                  color: genreFilter === g.label ? '#1A1A1A' : '#8A8A7A',
+                  border: genreFilter === g.label ? '1px solid #E8A317' : '1px solid #3A3A3A',
+                }}
+              >
+                {g.label}
+              </button>
+            ))}
+          </div>
+
           {/* Member filter + Sort */}
-          <div className="flex gap-2 mb-6">
+          <div className="flex gap-2 mb-3">
             <select
               value={memberFilter || ''}
               onChange={(e) => setMemberFilter(e.target.value || null)}
@@ -221,6 +328,93 @@ export default function BrowsePage() {
             </select>
           </div>
 
+          {/* Actor/Director search */}
+          <div className="mb-4 relative">
+            {activePersonName ? (
+              <div className="flex items-center gap-2 bg-charcoal border border-warm-gold rounded-btn px-3 py-2 min-h-[40px]">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#E8A317" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                  <circle cx="12" cy="7" r="4" />
+                </svg>
+                <span className="text-sm text-cream flex-1">{activePersonName}</span>
+                <button
+                  onClick={clearPersonFilter}
+                  className="text-muted hover:text-cream btn-press p-1"
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18" />
+                    <line x1="6" y1="6" x2="18" y2="18" />
+                  </svg>
+                </button>
+              </div>
+            ) : (
+              <>
+                <div className="relative">
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="#8A8A7A"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="absolute left-3 top-1/2 -translate-y-1/2"
+                  >
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                    <circle cx="12" cy="7" r="4" />
+                  </svg>
+                  <input
+                    type="text"
+                    value={personQuery}
+                    onChange={(e) => setPersonQuery(e.target.value)}
+                    placeholder="Search by actor or director..."
+                    className="w-full bg-charcoal border border-smoke rounded-btn pl-10 pr-3 py-2 text-sm text-cream min-h-[40px] placeholder-muted"
+                    style={{ outline: 'none' }}
+                  />
+                  {personSearching && (
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted">...</span>
+                  )}
+                </div>
+
+                {/* Person search results dropdown */}
+                {personResults.length > 0 && personQuery.length >= 2 && (
+                  <div className="absolute left-0 right-0 mt-1 bg-charcoal border border-smoke rounded-card overflow-hidden z-20 shadow-lg">
+                    {personResults.map((p) => {
+                      const hasMatches = matchingTmdbIds && matchingTmdbIds.length > 0;
+                      return (
+                        <button
+                          key={p.id}
+                          onClick={() => selectPerson(p)}
+                          className="w-full flex items-center gap-3 p-3 hover:bg-smoke transition-colors text-left btn-press"
+                        >
+                          <div className="w-10 h-10 flex-shrink-0 rounded-full overflow-hidden bg-smoke">
+                            {p.profile_url ? (
+                              <img src={p.profile_url} alt={p.name} className="w-full h-full object-cover" />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center text-xs text-muted">
+                                {p.name.charAt(0)}
+                              </div>
+                            )}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-medium text-cream truncate">{p.name}</p>
+                            <p className="text-xs text-muted">{p.known_for}</p>
+                          </div>
+                          {hasMatches && (
+                            <span className="text-xs text-warm-gold flex-shrink-0">
+                              In your list
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+
           {/* Results */}
           {loading ? (
             <div className="flex flex-col gap-3">
@@ -228,15 +422,20 @@ export default function BrowsePage() {
                 <SkeletonCard key={i} />
               ))}
             </div>
-          ) : recs.length === 0 ? (
+          ) : filteredRecs.length === 0 ? (
             <div className="text-center py-12">
-              <p className="text-muted">Nothing here.</p>
+              <p className="text-muted">
+                {genreFilter !== 'All' || activePersonName
+                  ? 'No matches for these filters.'
+                  : 'Nothing here.'}
+              </p>
               <p className="text-sm text-muted mt-1">Try different filters.</p>
             </div>
           ) : (
             <div className="flex flex-col gap-3">
+              <p className="text-xs text-muted">{filteredRecs.length} result{filteredRecs.length !== 1 ? 's' : ''}</p>
               <AnimatePresence>
-                {recs.map((rec) => (
+                {filteredRecs.map((rec) => (
                   <RecommendationCard
                     key={rec.id}
                     rec={rec}
