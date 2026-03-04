@@ -1,34 +1,23 @@
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
 
-const siteUrl = 'https://captainpopcorn.com';
-
 export const metadata: Metadata = {
   title: 'Captain Popcorn',
   description: 'What should we watch tonight?',
   manifest: '/manifest.json',
   icons: { icon: '/favicon.svg' },
-  metadataBase: new URL(siteUrl),
+  metadataBase: new URL('https://captainpopcorn.com'),
   openGraph: {
     title: 'Captain Popcorn',
     description: 'What should we watch tonight?',
-    url: siteUrl,
+    url: 'https://captainpopcorn.com',
     siteName: 'Captain Popcorn',
-    images: [
-      {
-        url: '/api/og',
-        width: 1200,
-        height: 630,
-        alt: 'Captain Popcorn',
-      },
-    ],
     type: 'website',
   },
   twitter: {
     card: 'summary_large_image',
     title: 'Captain Popcorn',
     description: 'What should we watch tonight?',
-    images: ['/api/og'],
   },
 };
 
