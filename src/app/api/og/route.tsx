@@ -17,10 +17,7 @@ export async function GET() {
           fontFamily: 'sans-serif',
         }}
       >
-        {/* Popcorn emoji as hero */}
-        <div style={{ fontSize: 180, marginBottom: 20 }}>🍿</div>
-
-        {/* Title */}
+        <div style={{ fontSize: 200, marginBottom: 10 }}>🍿</div>
         <div
           style={{
             fontSize: 72,
@@ -31,13 +28,11 @@ export async function GET() {
         >
           Captain Popcorn
         </div>
-
-        {/* Subtitle */}
         <div
           style={{
             fontSize: 32,
-            color: '#FAF3E0',
-            opacity: 0.7,
+            color: '#FFFFFF',
+            opacity: 0.6,
           }}
         >
           What should we watch tonight?

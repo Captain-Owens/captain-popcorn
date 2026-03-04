@@ -19,7 +19,7 @@ export const metadata: Metadata = {
         url: '/api/og',
         width: 1200,
         height: 630,
-        alt: 'Captain Popcorn - Movie recommendations for friends',
+        alt: 'Captain Popcorn',
       },
     ],
     type: 'website',
