@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { motion } from 'framer-motion';
 
 interface Comment {
   id: string;
@@ -30,19 +29,11 @@ export default function CommentsSheet({
   const [loading, setLoading] = useState(true);
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     if (isOpen && recommendationId) {
       fetchComments();
-      // Delay focus so the modal is rendered first
-      const t = setTimeout(() => {
-        if (inputRef.current) {
-          inputRef.current.focus();
-          inputRef.current.click();
-        }
-      }, 500);
-      return () => clearTimeout(t);
     }
     if (!isOpen) {
       setComments([]);
@@ -50,6 +41,23 @@ export default function CommentsSheet({
       setLoading(true);
     }
   }, [isOpen, recommendationId]);
+
+  // Lock body scroll when open
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+      document.body.style.position = 'fixed';
+      document.body.style.width = '100%';
+      document.body.style.top = `-${window.scrollY}px`;
+    } else {
+      const scrollY = document.body.style.top;
+      document.body.style.overflow = '';
+      document.body.style.position = '';
+      document.body.style.width = '';
+      document.body.style.top = '';
+      window.scrollTo(0, parseInt(scrollY || '0') * -1);
+    }
+  }, [isOpen]);
 
   async function fetchComments() {
     setLoading(true);
@@ -78,7 +86,6 @@ export default function CommentsSheet({
         const newComment = await res.json();
         setComments((prev) => [newComment, ...prev]);
         setText('');
-        inputRef.current?.focus();
       }
     } catch {}
     setSending(false);
@@ -106,10 +113,12 @@ export default function CommentsSheet({
         left: 0,
         right: 0,
         bottom: 0,
-        zIndex: 9999,
+        zIndex: 10000,
         backgroundColor: '#1A1A1A',
         display: 'flex',
         flexDirection: 'column',
+        transform: 'translate3d(0,0,0)',
+        WebkitTransform: 'translate3d(0,0,0)',
       }}
     >
       {/* Header bar */}
@@ -124,10 +133,10 @@ export default function CommentsSheet({
         }}
       >
         <div style={{ minWidth: 0, flex: 1, paddingRight: 12 }}>
-          <h3 style={{ fontSize: 16, fontWeight: 700, color: '#FFFFFF', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          <h3 style={{ fontSize: 16, fontWeight: 700, color: '#FFFFFF', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', margin: 0 }}>
             {recommendationTitle}
           </h3>
-          <p style={{ fontSize: 12, color: '#8A8A7A', marginTop: 2 }}>
+          <p style={{ fontSize: 12, color: '#8A8A7A', marginTop: 2, margin: 0 }}>
             {loading ? '...' : comments.length + ' comment' + (comments.length !== 1 ? 's' : '')}
           </p>
         </div>
@@ -144,6 +153,7 @@ export default function CommentsSheet({
             border: 'none',
             cursor: 'pointer',
             flexShrink: 0,
+            WebkitTapHighlightColor: 'transparent',
           }}
         >
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -158,18 +168,19 @@ export default function CommentsSheet({
         style={{
           flex: 1,
           overflowY: 'auto',
+          overflowX: 'hidden',
           padding: '16px 20px',
-          WebkitOverflowScrolling: 'touch',
+          WebkitOverflowScrolling: 'touch' as any,
         }}
       >
         {loading ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             {[1, 2, 3].map((i) => (
               <div key={i} style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-                <div className="skeleton" style={{ width: 32, height: 32, borderRadius: '50%', flexShrink: 0 }} />
+                <div style={{ width: 32, height: 32, borderRadius: '50%', flexShrink: 0, backgroundColor: '#3A3A3A' }} />
                 <div style={{ flex: 1 }}>
-                  <div className="skeleton" style={{ height: 12, width: 80, marginBottom: 8 }} />
-                  <div className="skeleton" style={{ height: 16, width: '100%' }} />
+                  <div style={{ height: 12, width: 80, marginBottom: 8, backgroundColor: '#3A3A3A', borderRadius: 4 }} />
+                  <div style={{ height: 16, width: '100%', backgroundColor: '#3A3A3A', borderRadius: 4 }} />
                 </div>
               </div>
             ))}
@@ -205,7 +216,7 @@ export default function CommentsSheet({
                     <span style={{ fontSize: 13, fontWeight: 600, color: '#FFFFFF' }}>{c.member_name}</span>
                     <span style={{ fontSize: 11, color: '#8A8A7A' }}>{timeAgo(c.created_at)}</span>
                   </div>
-                  <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.85)', marginTop: 4, lineHeight: 1.5 }}>{c.text}</p>
+                  <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.85)', marginTop: 4, lineHeight: 1.5, margin: 0 }}>{c.text}</p>
                 </div>
               </div>
             ))}
@@ -213,42 +224,52 @@ export default function CommentsSheet({
         )}
       </div>
 
-      {/* Input bar - always visible at bottom */}
+      {/* Input bar - pinned to bottom, OUTSIDE scroll context */}
       <div
         style={{
           flexShrink: 0,
           display: 'flex',
           gap: 8,
-          alignItems: 'center',
+          alignItems: 'flex-end',
           padding: '12px 16px',
           paddingBottom: 'max(16px, env(safe-area-inset-bottom))',
           borderTop: '1px solid #3A3A3A',
           backgroundColor: '#1A1A1A',
+          transform: 'translate3d(0,0,0)',
+          WebkitTransform: 'translate3d(0,0,0)',
+          position: 'relative',
+          zIndex: 10001,
         }}
       >
-        <input
-          ref={inputRef}
-          type="text"
+        <textarea
+          ref={textareaRef}
           value={text}
           onChange={(e) => setText(e.target.value)}
-          onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) handleSend(); }}
+          onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
           placeholder="Say something..."
           maxLength={500}
           autoComplete="off"
           autoCapitalize="sentences"
-          enterKeyHint="send"
+          rows={1}
+          inputMode="text"
           style={{
             flex: 1,
-            height: 48,
+            minHeight: 48,
+            maxHeight: 96,
             fontSize: 16,
+            fontFamily: 'inherit',
             backgroundColor: '#2A2A2A',
             border: '1px solid #4A4A4A',
             borderRadius: 24,
-            padding: '0 18px',
+            padding: '12px 18px',
             color: '#FFFFFF',
             outline: 'none',
-            WebkitAppearance: 'none',
-            appearance: 'none',
+            resize: 'none',
+            lineHeight: '24px',
+            WebkitUserSelect: 'text' as any,
+            userSelect: 'text' as any,
+            touchAction: 'manipulation',
+            WebkitTapHighlightColor: 'transparent',
           }}
         />
         <button
@@ -266,6 +287,8 @@ export default function CommentsSheet({
             border: 'none',
             cursor: text.trim() && !sending ? 'pointer' : 'default',
             flexShrink: 0,
+            WebkitTapHighlightColor: 'transparent',
+            touchAction: 'manipulation',
           }}
         >
           {sending ? '...' : 'Send'}
