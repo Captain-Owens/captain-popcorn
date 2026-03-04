@@ -25,6 +25,9 @@ export default function BrowsePage() {
   const [platformFilter, setPlatformFilter] = useState<Platform | null>(null);
   const [memberFilter, setMemberFilter] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<'newest' | 'top_rated' | 'most_watched'>('newest');
+  const [personFilter, setPersonFilter] = useState<string | null>(null);
+  const [allPeople, setAllPeople] = useState<string[]>([]);
+  const [personSearch, setPersonSearch] = useState('');
 
   useEffect(() => {
     const id = localStorage.getItem(STORAGE_KEY_MEMBER);
@@ -82,7 +85,19 @@ export default function BrowsePage() {
 
     if (Array.isArray(recsData)) setRecs(recsData);
     if (Array.isArray(membersData)) setMembers(membersData);
-    if (Array.isArray(allData)) setAllRecs(allData);
+    if (Array.isArray(allData)) {
+      setAllRecs(allData);
+      // Extract all people (cast + directors) for filter
+      const peopleSet = new Set<string>();
+      for (const rec of allData) {
+        const cc = (rec as any).cast_crew;
+        if (cc) {
+          if (cc.cast) cc.cast.forEach((n: string) => peopleSet.add(n));
+          if (cc.directors) cc.directors.forEach((n: string) => peopleSet.add(n));
+        }
+      }
+      setAllPeople(Array.from(peopleSet).sort());
+    }
 
     setLoading(false);
   }, [memberId, typeFilter, platformFilter, memberFilter, sortBy]);
@@ -241,6 +256,53 @@ export default function BrowsePage() {
         </select>
       </div>
 
+      {/* Person filter */}
+      <div className="mb-4 relative">
+        <input
+          type="text"
+          value={personSearch}
+          onChange={(e) => setPersonSearch(e.target.value)}
+          placeholder="Filter by actor or director..."
+          className="w-full"
+          style={{ minHeight: 40, fontSize: 14, padding: '8px 12px' }}
+        />
+        {personSearch.length >= 2 && (
+          <div className="absolute top-full left-0 right-0 mt-1 bg-charcoal border border-smoke rounded-btn overflow-hidden z-20 max-h-[200px] overflow-y-auto">
+            {allPeople
+              .filter((p) => p.toLowerCase().includes(personSearch.toLowerCase()))
+              .slice(0, 8)
+              .map((person) => (
+                <button
+                  key={person}
+                  onClick={() => {
+                    setPersonFilter(person);
+                    setPersonSearch('');
+                  }}
+                  className="w-full text-left px-3 py-2 text-sm text-cream hover:bg-smoke btn-press"
+                >
+                  {person}
+                </button>
+              ))}
+            {allPeople.filter((p) => p.toLowerCase().includes(personSearch.toLowerCase())).length === 0 && (
+              <div className="px-3 py-2 text-sm text-muted">No matches</div>
+            )}
+          </div>
+        )}
+        {personFilter && (
+          <div className="mt-2 flex items-center gap-2">
+            <span className="px-3 py-1 bg-warm-gold/20 text-warm-gold rounded-full text-xs font-medium">
+              {personFilter}
+            </span>
+            <button
+              onClick={() => setPersonFilter(null)}
+              className="text-xs text-muted hover:text-cream btn-press"
+            >
+              Clear
+            </button>
+          </div>
+        )}
+      </div>
+
       {/* Results */}
       {loading ? (
         <div className="flex flex-col gap-3">
@@ -256,7 +318,15 @@ export default function BrowsePage() {
       ) : (
         <div className="flex flex-col gap-3">
           <AnimatePresence>
-            {recs.map((rec) => (
+            {recs
+              .filter((rec) => {
+                if (!personFilter) return true;
+                const cc = (rec as any).cast_crew;
+                if (!cc) return false;
+                const allNames = [...(cc.cast || []), ...(cc.directors || [])];
+                return allNames.includes(personFilter);
+              })
+              .map((rec) => (
               <RecommendationCard
                 key={rec.id}
                 rec={rec}

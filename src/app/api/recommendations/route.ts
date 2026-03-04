@@ -117,6 +117,44 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  // Fetch cast/crew from TMDB if we have a tmdb_id
+  let castCrew = null;
+  if (tmdb_id) {
+    const apiKey = process.env.TMDB_API_KEY;
+    if (apiKey) {
+      try {
+        const mediaType = type === 'show' ? 'tv' : 'movie';
+        const creditsRes = await fetch(
+          `https://api.themoviedb.org/3/${mediaType}/${tmdb_id}/credits?api_key=${apiKey}`
+        );
+        const creditsData = await creditsRes.json();
+
+        const cast = (creditsData.cast || [])
+          .slice(0, 5)
+          .map((c: any) => c.name);
+
+        let directors = (creditsData.crew || [])
+          .filter((c: any) => c.job === 'Director')
+          .slice(0, 2)
+          .map((c: any) => c.name);
+
+        if (mediaType === 'tv' && directors.length === 0) {
+          const showRes = await fetch(
+            `https://api.themoviedb.org/3/tv/${tmdb_id}?api_key=${apiKey}`
+          );
+          const showData = await showRes.json();
+          directors = (showData.created_by || [])
+            .slice(0, 2)
+            .map((c: any) => c.name);
+        }
+
+        castCrew = { cast, directors };
+      } catch {
+        // Non-critical, skip
+      }
+    }
+  }
+
   const { data, error } = await supabase
     .from('recommendations')
     .insert({
@@ -131,6 +169,7 @@ export async function POST(req: NextRequest) {
       platform: platform || null,
       rating: null,
       comment: comment ? comment.slice(0, 280) : null,
+      cast_crew: castCrew,
     })
     .select()
     .single();

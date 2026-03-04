@@ -33,6 +33,8 @@ export interface Recommendation {
   // Likes
   like_count?: number;
   is_liked?: boolean;
+  // Cast/crew
+  cast_crew?: { cast: string[]; directors: string[] } | null;
 }
 
 export interface Watched {
