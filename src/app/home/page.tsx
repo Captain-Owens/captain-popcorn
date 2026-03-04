@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import dynamic from 'next/dynamic';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Recommendation } from '@/lib/types';
 import { STORAGE_KEY_MEMBER, STORAGE_KEY_MEMBER_NAME } from '@/lib/constants';
@@ -12,11 +13,12 @@ import SkeletonCard from '@/components/SkeletonCard';
 import SlotMachine from '@/components/SlotMachine';
 import CommentsSheet from '@/components/CommentsSheet';
 
-// Try to import DiscoverCarousel (may not exist on all builds)
-let DiscoverCarousel: any = null;
-try {
-  DiscoverCarousel = require('@/components/DiscoverCarousel').default;
-} catch {}
+const DiscoverCarousel = dynamic(
+  () => import('@/components/DiscoverCarousel').catch(() => {
+    return { default: () => null };
+  }),
+  { ssr: false }
+);
 
 export default function HomePage() {
   const router = useRouter();
@@ -47,10 +49,11 @@ export default function HomePage() {
     if (!memberId) return;
     setLoading(true);
 
-    const res = await fetch(`/api/recommendations?exclude_watched_by=${memberId}&sort=newest&limit=30`);
-    const data = await res.json();
-
-    if (Array.isArray(data)) setFeed(data);
+    try {
+      const res = await fetch(`/api/recommendations?exclude_watched_by=${memberId}&sort=newest&limit=30`);
+      const data = await res.json();
+      if (Array.isArray(data)) setFeed(data);
+    } catch {}
     setLoading(false);
   }, [memberId]);
 
@@ -102,6 +105,9 @@ export default function HomePage() {
     return 'Good evening';
   }
 
+  const visibleFeed = feed ? feed.slice(0, showCount) : [];
+  const remaining = feed ? feed.length - showCount : 0;
+
   return (
     <div className="px-4 py-6 pb-24">
       {/* Logo */}
@@ -132,14 +138,13 @@ export default function HomePage() {
       <button
         onClick={() => setSlotOpen(true)}
         className="w-full bg-charcoal rounded-card p-4 flex items-center justify-center gap-3 min-h-[56px] btn-press border border-smoke hover:border-warm-gold transition-colors mb-6"
-        style={{ animation: 'lucky-glow 3s ease-in-out infinite' }}
       >
         <span className="text-2xl">🎰</span>
         <span className="text-sm font-bold text-warm-gold">I'm Feeling Lucky</span>
       </button>
 
       {/* Discover Carousel */}
-      {DiscoverCarousel && memberId && (
+      {memberId && (
         <div className="mb-6">
           <h2 className="text-lg font-bold mb-3">Discover</h2>
           <DiscoverCarousel memberId={memberId} />
@@ -155,7 +160,7 @@ export default function HomePage() {
             <SkeletonCard key={i} />
           ))}
         </div>
-      ) : feed.length === 0 ? (
+      ) : visibleFeed.length === 0 ? (
         <div className="text-center py-12">
           <div className="text-4xl mb-3">🍿</div>
           <p className="text-muted">No recommendations yet.</p>
@@ -165,7 +170,7 @@ export default function HomePage() {
         <>
           <div className="flex flex-col gap-3">
             <AnimatePresence>
-              {feed.slice(0, showCount).map((rec) => (
+              {visibleFeed.map((rec) => (
                 <RecommendationCard
                   key={rec.id}
                   rec={rec}
@@ -176,12 +181,12 @@ export default function HomePage() {
               ))}
             </AnimatePresence>
           </div>
-          {showCount < feed.length && (
+          {remaining > 0 && (
             <button
               onClick={() => setShowCount((c) => c + 5)}
               className="w-full mt-4 py-3 bg-charcoal rounded-btn text-sm text-muted font-medium btn-press min-h-[44px]"
             >
-              Show more ({feed.length - showCount} remaining)
+              Show more ({remaining} remaining)
             </button>
           )}
         </>

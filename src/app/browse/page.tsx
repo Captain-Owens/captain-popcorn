@@ -15,7 +15,7 @@ interface WatchedMember {
   id: string;
   name: string;
   watched_count: number;
-  items: { title: string; poster_url: string | null; year: number | null; tmdb_rating: number | null }[];
+  items?: { title: string; poster_url: string | null; year: number | null; tmdb_rating: number | null }[];
 }
 
 export default function BrowsePage() {
@@ -73,19 +73,21 @@ export default function BrowsePage() {
     if (typeFilter !== 'all') params.set('type', typeFilter);
     if (memberFilter) params.set('member_id', memberFilter);
 
-    const [recsRes, membersRes, allRes] = await Promise.all([
-      fetch(`/api/recommendations?${params.toString()}`),
-      fetch('/api/members'),
-      fetch(`/api/recommendations?limit=100`),
-    ]);
+    try {
+      const [recsRes, membersRes, allRes] = await Promise.all([
+        fetch(`/api/recommendations?${params.toString()}`),
+        fetch('/api/members'),
+        fetch(`/api/recommendations?limit=100`),
+      ]);
 
-    const recsData = await recsRes.json();
-    const membersData = await membersRes.json();
-    const allData = await allRes.json();
+      const recsData = await recsRes.json();
+      const membersData = await membersRes.json();
+      const allData = await allRes.json();
 
-    if (Array.isArray(recsData)) setRecs(recsData);
-    if (Array.isArray(membersData)) setMembers(membersData);
-    if (Array.isArray(allData)) setAllRecs(allData);
+      if (Array.isArray(recsData)) setRecs(recsData);
+      if (Array.isArray(membersData)) setMembers(membersData);
+      if (Array.isArray(allData)) setAllRecs(allData);
+    } catch {}
 
     setLoading(false);
   }, [memberId, typeFilter, memberFilter, sortBy]);
@@ -275,11 +277,11 @@ export default function BrowsePage() {
                       className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0"
                       style={{ backgroundColor: '#3A3A3A', color: '#E8A317' }}
                     >
-                      {wm.name.charAt(0).toUpperCase()}
+                      {wm.name?.charAt(0)?.toUpperCase() || '?'}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="font-medium text-cream">{wm.name}</p>
-                      <p className="text-xs text-muted">{wm.watched_count} watched</p>
+                      <p className="font-medium text-cream">{wm.name || 'Unknown'}</p>
+                      <p className="text-xs text-muted">{wm.watched_count || 0} watched</p>
                     </div>
                     <svg
                       width="16"
@@ -298,22 +300,22 @@ export default function BrowsePage() {
                       <polyline points="6 9 12 15 18 9" />
                     </svg>
                   </button>
-                  {expandedMember === wm.id && wm.items && (
+                  {expandedMember === wm.id && Array.isArray(wm.items) && wm.items.length > 0 && (
                     <div className="px-4 pb-4">
                       <div className="flex flex-col gap-2">
                         {wm.items.map((item, i) => (
                           <div key={i} className="flex items-center gap-3 py-2 border-t border-smoke">
                             <div className="w-8 h-12 flex-shrink-0 rounded overflow-hidden bg-smoke">
                               {item.poster_url ? (
-                                <img src={item.poster_url} alt={item.title} className="w-full h-full object-cover" />
+                                <img src={item.poster_url} alt={item.title || ''} className="w-full h-full object-cover" />
                               ) : (
                                 <div className="w-full h-full flex items-center justify-center text-xs text-muted">?</div>
                               )}
                             </div>
                             <div className="min-w-0 flex-1">
-                              <p className="text-sm text-cream truncate">{item.title}</p>
+                              <p className="text-sm text-cream truncate">{item.title || 'Unknown'}</p>
                               <p className="text-xs text-muted">
-                                {item.year}{item.tmdb_rating ? ` · ${item.tmdb_rating}/10` : ''}
+                                {item.year || ''}{item.tmdb_rating ? ` · ${item.tmdb_rating}/10` : ''}
                               </p>
                             </div>
                           </div>

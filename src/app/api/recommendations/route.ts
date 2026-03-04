@@ -7,14 +7,12 @@ export async function GET(req: NextRequest) {
   const type = params.get('type');
   const platform = params.get('platform');
   const filterMemberId = params.get('member_id');
-  const householdId = params.get('household_id');
-  const minRating = params.get('min_rating');
   const sort = params.get('sort') || 'newest';
   const limit = parseInt(params.get('limit') || '50', 10);
 
   let query = supabase
     .from('recommendations')
-    .select('*, members!inner(name, household_id, households(name))');
+    .select('*, members(name)');
 
   if (type && type !== 'all') {
     query = query.eq('type', type);
@@ -24,12 +22,6 @@ export async function GET(req: NextRequest) {
   }
   if (filterMemberId) {
     query = query.eq('member_id', filterMemberId);
-  }
-  if (householdId) {
-    query = query.eq('members.household_id', householdId);
-  }
-  if (minRating) {
-    query = query.gte('rating', parseInt(minRating, 10));
   }
   if (sort === 'newest') {
     query = query.order('created_at', { ascending: false });
@@ -44,6 +36,10 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
+  if (!recs) {
+    return NextResponse.json([]);
+  }
+
   let watchedIds: Set<string> = new Set();
   let watchCounts: Record<string, number> = {};
 
@@ -52,7 +48,9 @@ export async function GET(req: NextRequest) {
       .from('watched')
       .select('recommendation_id')
       .eq('member_id', memberId);
-    watchedIds = new Set((watched || []).map((w) => w.recommendation_id));
+    if (watched) {
+      watchedIds = new Set(watched.map((w) => w.recommendation_id));
+    }
   }
 
   const { data: counts } = await supabase
@@ -65,30 +63,44 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  // Get comment counts
+  // Get comment counts (safely - table might not exist)
   let commentCounts: Record<string, number> = {};
-  const { data: commentData } = await supabase
-    .from('comments')
-    .select('recommendation_id');
-  if (commentData) {
-    for (const c of commentData) {
-      commentCounts[c.recommendation_id] = (commentCounts[c.recommendation_id] || 0) + 1;
+  try {
+    const { data: commentData } = await supabase
+      .from('comments')
+      .select('recommendation_id');
+    if (commentData) {
+      for (const c of commentData) {
+        commentCounts[c.recommendation_id] = (commentCounts[c.recommendation_id] || 0) + 1;
+      }
     }
-  }
+  } catch {}
 
-  const enriched = (recs || [])
-    .filter((r) => !watchedIds.has(r.id))
-    .map((r) => ({
-      ...r,
-      recommender_name: (r as any).members?.name || 'Unknown',
-      household_name: (r as any).members?.households?.name || null,
+  const enriched = recs
+    .filter((r: any) => !watchedIds.has(r.id))
+    .map((r: any) => ({
+      id: r.id,
+      member_id: r.member_id,
+      title: r.title || '',
+      type: r.type || 'movie',
+      tmdb_id: r.tmdb_id || null,
+      poster_url: r.poster_url || null,
+      year: r.year || null,
+      genre: r.genre || null,
+      tmdb_rating: r.tmdb_rating || null,
+      platform: r.platform || null,
+      rating: r.rating || null,
+      comment: r.comment || null,
+      created_at: r.created_at,
+      recommender_name: r.members?.name || 'Unknown',
+      household_name: null,
       watch_count: watchCounts[r.id] || 0,
       comment_count: commentCounts[r.id] || 0,
       is_watched: false,
     }));
 
   if (sort === 'most_watched') {
-    enriched.sort((a, b) => b.watch_count - a.watch_count);
+    enriched.sort((a: any, b: any) => b.watch_count - a.watch_count);
   }
 
   return NextResponse.json(enriched);
