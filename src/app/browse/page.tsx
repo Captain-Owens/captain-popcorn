@@ -22,7 +22,7 @@ export default function BrowsePage() {
 
   // Filters
   const [typeFilter, setTypeFilter] = useState<'all' | 'movie' | 'show'>('all');
-  const [platformFilter, setPlatformFilter] = useState<Platform | null>(null);
+  
   const [memberFilter, setMemberFilter] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<'newest' | 'top_rated' | 'most_watched'>('newest');
   const [personFilter, setPersonFilter] = useState<string | null>(null);
@@ -70,7 +70,7 @@ export default function BrowsePage() {
     params.set('exclude_watched_by', memberId);
     params.set('sort', sortBy);
     if (typeFilter !== 'all') params.set('type', typeFilter);
-    if (platformFilter) params.set('platform', platformFilter);
+
     if (memberFilter) params.set('member_id', memberFilter);
 
     const [recsRes, membersRes, allRes] = await Promise.all([
