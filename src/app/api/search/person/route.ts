@@ -41,7 +41,7 @@ export async function GET(req: NextRequest) {
         .filter((c: any) => c.job === 'Director' || c.department === 'Directing')
         .map((c: any) => c.id);
 
-      const allIds = [...new Set([...castIds, ...crewIds])];
+      const allIds = Array.from(new Set([...castIds, ...crewIds]));
       allIds.forEach((id: number) => allTmdbIds.add(id));
 
       peopleResults.push({
@@ -62,7 +62,7 @@ export async function GET(req: NextRequest) {
       .not('tmdb_id', 'is', null);
 
     const ourTmdbIds = new Set((recs || []).map((r: any) => r.tmdb_id));
-    const matchingIds = [...allTmdbIds].filter((id) => ourTmdbIds.has(id));
+    const matchingIds = Array.from(allTmdbIds).filter((id) => ourTmdbIds.has(id));
 
     return NextResponse.json({
       people: peopleResults,
