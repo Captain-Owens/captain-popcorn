@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Recommendation } from '@/lib/types';
 import { PLATFORMS } from '@/lib/constants';
@@ -10,6 +11,7 @@ interface RecommendationCardProps {
   onUnwatch?: (id: string) => void;
   onLike?: (id: string) => void;
   onUnlike?: (id: string) => void;
+  onDelete?: (id: string) => void;
   currentMemberId?: string;
   showWatched?: boolean;
 }
@@ -20,12 +22,15 @@ export default function RecommendationCard({
   onUnwatch,
   onLike,
   onUnlike,
+  onDelete,
   currentMemberId,
   showWatched = false,
 }: RecommendationCardProps) {
   const platform = PLATFORMS.find((p) => p.slug === rec.platform);
   const isLiked = rec.is_liked || false;
   const likeCount = rec.like_count || 0;
+  const isOwnRec = currentMemberId === rec.member_id;
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   return (
     <motion.div
@@ -34,8 +39,27 @@ export default function RecommendationCard({
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -8 }}
       transition={{ duration: 0.2 }}
-      className="flex gap-3 p-4 bg-charcoal rounded-card"
+      className="flex gap-3 p-4 bg-charcoal rounded-card relative"
     >
+      {/* Delete confirmation overlay */}
+      {confirmDelete && (
+        <div className="absolute inset-0 bg-charcoal rounded-card flex items-center justify-center gap-3 z-10 border-2 border-deep-red">
+          <span className="text-sm text-cream">Delete this?</span>
+          <button
+            onClick={() => { onDelete?.(rec.id); setConfirmDelete(false); }}
+            className="px-3 py-1.5 bg-deep-red text-cream rounded-btn text-sm font-bold btn-press"
+          >
+            Yes
+          </button>
+          <button
+            onClick={() => setConfirmDelete(false)}
+            className="px-3 py-1.5 bg-smoke text-muted rounded-btn text-sm font-bold btn-press"
+          >
+            No
+          </button>
+        </div>
+      )}
+
       {/* Poster */}
       <div className="w-20 h-28 flex-shrink-0 rounded-btn overflow-hidden bg-smoke">
         {rec.poster_url ? (
@@ -54,9 +78,24 @@ export default function RecommendationCard({
 
       {/* Content */}
       <div className="flex-1 flex flex-col gap-1 min-w-0">
-        <h3 className="font-bold text-cream text-base leading-tight truncate">
-          {rec.title}
-        </h3>
+        <div className="flex items-start justify-between gap-2">
+          <h3 className="font-bold text-cream text-base leading-tight truncate">
+            {rec.title}
+          </h3>
+          {/* Delete button - only on own recs */}
+          {isOwnRec && onDelete && (
+            <button
+              onClick={() => setConfirmDelete(true)}
+              className="flex-shrink-0 w-7 h-7 flex items-center justify-center text-muted hover:text-deep-red btn-press rounded-full transition-colors"
+              title="Delete"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="3 6 5 6 21 6" />
+                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+              </svg>
+            </button>
+          )}
+        </div>
 
         <div className="flex items-center gap-2 text-xs text-muted">
           {rec.year && <span>{rec.year}</span>}

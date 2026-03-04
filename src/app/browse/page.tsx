@@ -43,7 +43,20 @@ export default function BrowsePage() {
       }
     }
     window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+  
+  async function handleDelete(recId: string) {
+    if (!memberId) return;
+
+    setRecs((prev) => prev.filter((r) => r.id !== recId));
+
+    await fetch('/api/recommendations/delete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ recommendation_id: recId, member_id: memberId }),
+    });
+  }
+
+  return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
   const fetchData = useCallback(async () => {
@@ -134,6 +147,19 @@ export default function BrowsePage() {
       method: 'DELETE',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ member_id: memberId, recommendation_id: recId }),
+    });
+  }
+
+
+  async function handleDelete(recId: string) {
+    if (!memberId) return;
+
+    setRecs((prev) => prev.filter((r) => r.id !== recId));
+
+    await fetch('/api/recommendations/delete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ recommendation_id: recId, member_id: memberId }),
     });
   }
 
@@ -238,6 +264,7 @@ export default function BrowsePage() {
                 onUnwatch={handleUnwatch}
                 onLike={handleLike}
                 onUnlike={handleUnlike}
+                onDelete={handleDelete}
                 currentMemberId={memberId || undefined}
               />
             ))}

@@ -72,7 +72,21 @@ export default function HomePage() {
 
       .subscribe();
 
-    return () => {
+  
+  async function handleDelete(recId: string) {
+    if (!memberId) return;
+
+    // Optimistic remove
+    setFeed((prev) => prev.filter((r) => r.id !== recId));
+
+    await fetch('/api/recommendations/delete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ recommendation_id: recId, member_id: memberId }),
+    });
+  }
+
+  return () => {
       supabase.removeChannel(channel);
     };
   }, [memberId, fetchData]);
@@ -135,6 +149,20 @@ export default function HomePage() {
       method: 'DELETE',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ member_id: memberId, recommendation_id: recId }),
+    });
+  }
+
+
+  async function handleDelete(recId: string) {
+    if (!memberId) return;
+
+    // Optimistic remove
+    setFeed((prev) => prev.filter((r) => r.id !== recId));
+
+    await fetch('/api/recommendations/delete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ recommendation_id: recId, member_id: memberId }),
     });
   }
 
@@ -237,6 +265,7 @@ export default function HomePage() {
                 onUnwatch={handleUnwatch}
                 onLike={handleLike}
                 onUnlike={handleUnlike}
+                onDelete={handleDelete}
                 currentMemberId={memberId || undefined}
               />
             ))}
