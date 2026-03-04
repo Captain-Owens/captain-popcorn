@@ -5,113 +5,158 @@ import { TMDB_GENRES } from '@/lib/constants';
 const TMDB_API_KEY = process.env.TMDB_API_KEY;
 const TMDB_BASE = 'https://api.themoviedb.org/3';
 
+// Quality floor
+const MIN_RATING = 7.0;
+const MIN_VOTES = 500;
+const MAX_RESULTS = 8;
+
+// How many seed titles to sample (to avoid too many API calls)
+const MAX_SEEDS = 25;
+
+interface TMDBRec {
+  id: number;
+  title?: string;
+  name?: string;
+  poster_path: string | null;
+  release_date?: string;
+  first_air_date?: string;
+  vote_average: number;
+  vote_count: number;
+  genre_ids: number[];
+  overview: string;
+  media_type?: string;
+}
+
+interface ScoredRec {
+  id: number;
+  title: string;
+  poster_url: string | null;
+  year: number | null;
+  genre: string | null;
+  tmdb_rating: number | null;
+  type: 'movie' | 'show';
+  overview: string | null;
+  vote_count: number;
+  overlap: number; // how many seed titles recommend this
+  score: number;   // final ranking score
+}
+
+async function fetchTMDBRecs(tmdbId: number, type: 'movie' | 'show'): Promise<TMDBRec[]> {
+  try {
+    const endpoint = type === 'movie'
+      ? `${TMDB_BASE}/movie/${tmdbId}/recommendations`
+      : `${TMDB_BASE}/tv/${tmdbId}/recommendations`;
+
+    const res = await fetch(
+      `${endpoint}?api_key=${TMDB_API_KEY}&language=en-US&page=1`,
+      { next: { revalidate: 3600 } } // cache for 1 hour
+    );
+
+    if (!res.ok) return [];
+
+    const data = await res.json();
+    return (data.results || []).map((r: any) => ({
+      ...r,
+      media_type: type === 'movie' ? 'movie' : 'tv',
+    }));
+  } catch {
+    return [];
+  }
+}
+
 export async function GET() {
   try {
-    // Get all recommendations to analyze group taste
+    // 1. Get all crew recommendations that have TMDB IDs
     const { data: recs } = await supabase
       .from('recommendations')
-      .select('*')
+      .select('tmdb_id, type, title')
       .not('tmdb_id', 'is', null);
 
-    if (!recs || recs.length < 5) {
+    if (!recs || recs.length < 3) {
       return NextResponse.json([]);
     }
 
-    // Analyze genres
-    const genreCounts: Record<string, number> = {};
-    let movieCount = 0;
-    let showCount = 0;
-
-    recs.forEach((rec) => {
-      if (rec.type === 'movie') movieCount++;
-      else showCount++;
-      if (rec.genre) {
-        rec.genre.split(', ').forEach((g: string) => {
-          genreCounts[g] = (genreCounts[g] || 0) + 1;
-        });
-      }
-    });
-
-    // Top 3 genres
-    const topGenres = Object.entries(genreCounts)
-      .sort(([, a], [, b]) => b - a)
-      .slice(0, 3)
-      .map(([g]) => g);
-
-    // Map genre names to TMDB IDs
-    const genreNameToId: Record<string, number> = {};
-    Object.entries(TMDB_GENRES).forEach(([id, name]) => {
-      genreNameToId[name] = parseInt(id);
-    });
-
-    const genreIds = topGenres
-      .map((g) => genreNameToId[g])
-      .filter(Boolean);
-
-    // Existing TMDB IDs to exclude
+    // Set of existing TMDB IDs to exclude
     const existingIds = new Set(recs.map((r) => r.tmdb_id));
 
-    const results: any[] = [];
+    // 2. Sample seed titles (shuffle and take up to MAX_SEEDS)
+    const shuffled = [...recs].sort(() => Math.random() - 0.5);
+    const seeds = shuffled.slice(0, MAX_SEEDS);
 
-    // Fetch movie suggestions
-    if (genreIds.length > 0) {
-      const movieUrl = `${TMDB_BASE}/discover/movie?api_key=${TMDB_API_KEY}&with_genres=${genreIds.join(',')}&sort_by=vote_average.desc&vote_count.gte=50&language=en-US&page=1`;
-      const movieRes = await fetch(movieUrl);
-      const movieData = await movieRes.json();
+    // 3. Fetch recommendations for each seed title in parallel
+    const allPromises = seeds.map((seed) =>
+      fetchTMDBRecs(seed.tmdb_id!, seed.type as 'movie' | 'show')
+    );
+    const allResults = await Promise.all(allPromises);
 
-      if (movieData.results) {
-        movieData.results.forEach((m: any) => {
-          if (!existingIds.has(m.id)) {
-            results.push({
-              id: m.id,
-              title: m.title,
-              poster_url: m.poster_path
-                ? `https://image.tmdb.org/t/p/w342${m.poster_path}`
-                : null,
-              year: m.release_date ? parseInt(m.release_date.slice(0, 4)) : null,
-              genre: m.genre_ids?.map((gid: number) => TMDB_GENRES[gid]).filter(Boolean).join(', ') || null,
-              tmdb_rating: m.vote_average ? Math.round(m.vote_average * 10) / 10 : null,
-              type: 'movie',
-              overview: m.overview || null,
-              reason: `Based on your crew's love of ${topGenres.slice(0, 2).join(' and ')}`,
-            });
-          }
-        });
-      }
+    // 4. Pool and score all recommendations
+    const recMap = new Map<number, ScoredRec>();
 
-      // Fetch TV suggestions
-      const tvUrl = `${TMDB_BASE}/discover/tv?api_key=${TMDB_API_KEY}&with_genres=${genreIds.join(',')}&sort_by=vote_average.desc&vote_count.gte=50&language=en-US&page=1`;
-      const tvRes = await fetch(tvUrl);
-      const tvData = await tvRes.json();
+    for (const results of allResults) {
+      for (const r of results) {
+        // Skip if already in crew's catalog
+        if (existingIds.has(r.id)) continue;
 
-      if (tvData.results) {
-        tvData.results.forEach((t: any) => {
-          if (!existingIds.has(t.id)) {
-            results.push({
-              id: t.id,
-              title: t.name,
-              poster_url: t.poster_path
-                ? `https://image.tmdb.org/t/p/w342${t.poster_path}`
-                : null,
-              year: t.first_air_date ? parseInt(t.first_air_date.slice(0, 4)) : null,
-              genre: t.genre_ids?.map((gid: number) => TMDB_GENRES[gid]).filter(Boolean).join(', ') || null,
-              tmdb_rating: t.vote_average ? Math.round(t.vote_average * 10) / 10 : null,
-              type: 'show',
-              overview: t.overview || null,
-              reason: `Based on your crew's love of ${topGenres.slice(0, 2).join(' and ')}`,
-            });
-          }
-        });
+        // Skip if below quality floor
+        if (r.vote_average < MIN_RATING) continue;
+        if (r.vote_count < MIN_VOTES) continue;
+
+        const isMovie = r.media_type === 'movie' || !!r.title;
+        const title = isMovie ? (r.title || '') : (r.name || '');
+        const dateStr = isMovie ? r.release_date : r.first_air_date;
+        const year = dateStr ? parseInt(dateStr.slice(0, 4)) : null;
+
+        if (recMap.has(r.id)) {
+          // Already seen - increment overlap count
+          const existing = recMap.get(r.id)!;
+          existing.overlap += 1;
+          existing.score = existing.overlap * 3 + (existing.tmdb_rating || 0);
+        } else {
+          // New recommendation
+          const genre = r.genre_ids
+            ?.map((gid: number) => TMDB_GENRES[gid])
+            .filter(Boolean)
+            .join(', ') || null;
+
+          recMap.set(r.id, {
+            id: r.id,
+            title,
+            poster_url: r.poster_path
+              ? `https://image.tmdb.org/t/p/w342${r.poster_path}`
+              : null,
+            year,
+            genre,
+            tmdb_rating: r.vote_average
+              ? Math.round(r.vote_average * 10) / 10
+              : null,
+            type: isMovie ? 'movie' : 'show',
+            overview: r.overview || null,
+            vote_count: r.vote_count,
+            overlap: 1,
+            score: 3 + (r.vote_average || 0), // base overlap of 1 * 3 + rating
+          });
+        }
       }
     }
 
-    // Shuffle and return top 8
-    for (let i = results.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [results[i], results[j]] = [results[j], results[i]];
-    }
+    // 5. Sort by score (overlap count * 3 + TMDB rating) and take top results
+    const sorted = Array.from(recMap.values())
+      .sort((a, b) => b.score - a.score)
+      .slice(0, MAX_RESULTS);
 
-    return NextResponse.json(results.slice(0, 8));
+    // 6. Return clean response (strip internal scoring fields)
+    const response = sorted.map(({ id, title, poster_url, year, genre, tmdb_rating, type, overview }) => ({
+      id,
+      title,
+      poster_url,
+      year,
+      genre,
+      tmdb_rating,
+      type,
+      overview,
+    }));
+
+    return NextResponse.json(response);
   } catch (error) {
     console.error('Discover error:', error);
     return NextResponse.json([]);
