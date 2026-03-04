@@ -140,7 +140,7 @@ export default function SlotMachine({ isOpen, onClose, memberId, onWatch }: Slot
               <motion.div
                 className="flex flex-col gap-4"
                 initial={{ y: 0 }}
-                animate={{ y: -(totalReelHeight - posterHeight) }}
+                animate={{ y: -((reelPosters.length - 1) * (posterHeight + gap)) }}
                 transition={{
                   duration: SPIN_DURATION,
                   ease: [0.2, 0.8, 0.3, 1],
