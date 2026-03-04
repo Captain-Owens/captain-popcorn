@@ -12,23 +12,11 @@ import SkeletonCard from '@/components/SkeletonCard';
 import SlotMachine from '@/components/SlotMachine';
 import CommentsSheet from '@/components/CommentsSheet';
 
+// Try to import DiscoverCarousel (may not exist on all builds)
 let DiscoverCarousel: any = null;
 try {
   DiscoverCarousel = require('@/components/DiscoverCarousel').default;
 } catch {}
-
-interface DiscoverItem {
-  id: number;
-  title: string;
-  poster_url: string | null;
-  year: number | null;
-  genre: string | null;
-  tmdb_rating: number | null;
-  type: 'movie' | 'show';
-  overview?: string;
-}
-
-const ITEMS_PER_PAGE = 5;
 
 export default function HomePage() {
   const router = useRouter();
@@ -37,14 +25,12 @@ export default function HomePage() {
   const [feed, setFeed] = useState<Recommendation[]>([]);
   const [loading, setLoading] = useState(true);
   const [slotOpen, setSlotOpen] = useState(false);
-  const [discovers, setDiscovers] = useState<DiscoverItem[]>([]);
-  const [discoverLoading, setDiscoverLoading] = useState(true);
-  const [visibleCount, setVisibleCount] = useState(ITEMS_PER_PAGE);
+  const [showCount, setShowCount] = useState(5);
 
   // Comments
   const [commentsOpen, setCommentsOpen] = useState(false);
-  const [commentRecId, setCommentRecId] = useState('');
-  const [commentRecTitle, setCommentRecTitle] = useState('');
+  const [commentsRecId, setCommentsRecId] = useState('');
+  const [commentsRecTitle, setCommentsRecTitle] = useState('');
 
   useEffect(() => {
     const id = localStorage.getItem(STORAGE_KEY_MEMBER);
@@ -60,31 +46,19 @@ export default function HomePage() {
   const fetchData = useCallback(async () => {
     if (!memberId) return;
     setLoading(true);
-    const feedRes = await fetch(
-      `/api/recommendations?exclude_watched_by=${memberId}&sort=newest&limit=20`
-    );
-    const feedData = await feedRes.json();
-    if (Array.isArray(feedData)) setFeed(feedData);
+
+    const res = await fetch(`/api/recommendations?exclude_watched_by=${memberId}&sort=newest&limit=30`);
+    const data = await res.json();
+
+    if (Array.isArray(data)) setFeed(data);
     setLoading(false);
   }, [memberId]);
 
-  const fetchDiscover = useCallback(async () => {
-    setDiscoverLoading(true);
-    try {
-      const res = await fetch('/api/discover');
-      const data = await res.json();
-      if (Array.isArray(data)) setDiscovers(data);
-    } catch {
-      setDiscovers([]);
-    }
-    setDiscoverLoading(false);
-  }, []);
-
   useEffect(() => {
     fetchData();
-    fetchDiscover();
-  }, [fetchData, fetchDiscover]);
+  }, [fetchData]);
 
+  // Realtime
   useEffect(() => {
     if (!memberId) return;
     const channel = supabase
@@ -116,35 +90,31 @@ export default function HomePage() {
   }
 
   function handleOpenComments(recId: string, recTitle: string) {
-    setCommentRecId(recId);
-    setCommentRecTitle(recTitle);
+    setCommentsRecId(recId);
+    setCommentsRecTitle(recTitle);
     setCommentsOpen(true);
   }
 
-  const greeting = (() => {
-    const hour = new Date().getHours();
-    if (hour < 12) return 'Good morning';
-    if (hour < 17) return 'Good afternoon';
+  function getGreeting() {
+    const h = new Date().getHours();
+    if (h < 12) return 'Good morning';
+    if (h < 17) return 'Good afternoon';
     return 'Good evening';
-  })();
-
-  const visibleFeed = feed.slice(0, visibleCount);
-  const hasMore = feed.length > visibleCount;
+  }
 
   return (
-    <div className="px-4 py-6 pb-24 page-enter">
+    <div className="px-4 py-6 pb-24">
       {/* Logo */}
-      <div className="flex justify-center mb-4">
-        <div className="flex items-center gap-2">
-          <span className="text-3xl">🍿</span>
-          <h1 className="text-2xl font-bold text-warm-gold tracking-tight">Captain Popcorn</h1>
-        </div>
+      <div className="text-center mb-4">
+        <h1 className="text-2xl font-bold" style={{ color: '#E8A317' }}>
+          🍿 Captain Popcorn
+        </h1>
       </div>
 
       {/* Greeting */}
-      <div className="mb-6">
-        <p className="text-lg font-medium text-cream">
-          {greeting} {memberName}, whatcha feeling tonight?
+      <div className="text-center mb-6">
+        <p className="text-lg text-cream">
+          {getGreeting()}, {memberName}
         </p>
         <button
           onClick={() => {
@@ -153,7 +123,6 @@ export default function HomePage() {
             router.replace('/pick');
           }}
           className="text-xs text-muted underline btn-press mt-1"
-          style={{ minHeight: 44, display: 'inline-flex', alignItems: 'center' }}
         >
           Switch user
         </button>
@@ -162,33 +131,22 @@ export default function HomePage() {
       {/* Feeling Lucky */}
       <button
         onClick={() => setSlotOpen(true)}
-        className="w-full rounded-card p-6 flex items-center justify-center gap-4 mb-6 btn-press lucky-glow"
-        style={{
-          minHeight: 100,
-          background: 'linear-gradient(135deg, #2A2A2A 0%, #1A1A1A 100%)',
-        }}
+        className="w-full bg-charcoal rounded-card p-4 flex items-center justify-center gap-3 min-h-[56px] btn-press border border-smoke hover:border-warm-gold transition-colors mb-6"
+        style={{ animation: 'lucky-glow 3s ease-in-out infinite' }}
       >
-        <motion.div
-          className="text-5xl"
-          animate={{ rotate: [0, -5, 5, 0] }}
-          transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
-        >
-          🎰
-        </motion.div>
-        <div className="text-left">
-          <span className="text-lg font-bold text-warm-gold">Feeling lucky?</span>
-          <p className="text-xs text-muted mt-0.5">Spin for a random pick</p>
-        </div>
+        <span className="text-2xl">🎰</span>
+        <span className="text-sm font-bold text-warm-gold">I'm Feeling Lucky</span>
       </button>
 
-      {/* Discover carousel */}
-      {DiscoverCarousel && (
+      {/* Discover Carousel */}
+      {DiscoverCarousel && memberId && (
         <div className="mb-6">
-          <DiscoverCarousel items={discovers} loading={discoverLoading} />
+          <h2 className="text-lg font-bold mb-3">Discover</h2>
+          <DiscoverCarousel memberId={memberId} />
         </div>
       )}
 
-      {/* Recent feed */}
+      {/* Recently added */}
       <h2 className="text-lg font-bold mb-4">Recently added</h2>
 
       {loading ? (
@@ -199,22 +157,15 @@ export default function HomePage() {
         </div>
       ) : feed.length === 0 ? (
         <div className="text-center py-12">
-          <div className="text-5xl mb-4">🍿</div>
-          <p className="text-cream font-medium text-lg mb-1">No recommendations yet</p>
-          <p className="text-muted text-sm mb-4">Be the first to add a pick for the crew.</p>
-          <button
-            onClick={() => router.push('/add')}
-            className="px-6 py-3 bg-warm-gold text-rich-black rounded-btn font-bold btn-press"
-            style={{ minHeight: 44 }}
-          >
-            Add a pick
-          </button>
+          <div className="text-4xl mb-3">🍿</div>
+          <p className="text-muted">No recommendations yet.</p>
+          <p className="text-muted text-sm">Be the first to add one.</p>
         </div>
       ) : (
         <>
           <div className="flex flex-col gap-3">
             <AnimatePresence>
-              {visibleFeed.map((rec) => (
+              {feed.slice(0, showCount).map((rec) => (
                 <RecommendationCard
                   key={rec.id}
                   rec={rec}
@@ -225,14 +176,12 @@ export default function HomePage() {
               ))}
             </AnimatePresence>
           </div>
-
-          {hasMore && (
+          {showCount < feed.length && (
             <button
-              onClick={() => setVisibleCount((prev) => prev + ITEMS_PER_PAGE)}
-              className="w-full mt-4 py-3 text-sm text-muted font-medium btn-press rounded-btn border border-smoke hover:border-warm-gold transition-colors"
-              style={{ minHeight: 44 }}
+              onClick={() => setShowCount((c) => c + 5)}
+              className="w-full mt-4 py-3 bg-charcoal rounded-btn text-sm text-muted font-medium btn-press min-h-[44px]"
             >
-              Show more ({feed.length - visibleCount} remaining)
+              Show more ({feed.length - showCount} remaining)
             </button>
           )}
         </>
@@ -248,8 +197,8 @@ export default function HomePage() {
       <CommentsSheet
         isOpen={commentsOpen}
         onClose={() => setCommentsOpen(false)}
-        recommendationId={commentRecId}
-        recommendationTitle={commentRecTitle}
+        recommendationId={commentsRecId}
+        recommendationTitle={commentsRecTitle}
         memberId={memberId || ''}
       />
 

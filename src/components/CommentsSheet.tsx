@@ -29,6 +29,7 @@ export default function CommentsSheet({
   const [loading, setLoading] = useState(true);
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
+  const [deleting, setDeleting] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
@@ -45,10 +46,11 @@ export default function CommentsSheet({
   // Lock body scroll when open
   useEffect(() => {
     if (isOpen) {
+      const scrollY = window.scrollY;
       document.body.style.overflow = 'hidden';
       document.body.style.position = 'fixed';
       document.body.style.width = '100%';
-      document.body.style.top = `-${window.scrollY}px`;
+      document.body.style.top = `-${scrollY}px`;
     } else {
       const scrollY = document.body.style.top;
       document.body.style.overflow = '';
@@ -91,6 +93,21 @@ export default function CommentsSheet({
     setSending(false);
   }
 
+  async function handleDelete(commentId: string) {
+    setDeleting(commentId);
+    try {
+      const res = await fetch('/api/comments', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ comment_id: commentId, member_id: memberId }),
+      });
+      if (res.ok) {
+        setComments((prev) => prev.filter((c) => c.id !== commentId));
+      }
+    } catch {}
+    setDeleting(null);
+  }
+
   function timeAgo(dateStr: string) {
     const diff = Date.now() - new Date(dateStr).getTime();
     const mins = Math.floor(diff / 60000);
@@ -121,7 +138,7 @@ export default function CommentsSheet({
         WebkitTransform: 'translate3d(0,0,0)',
       }}
     >
-      {/* Header bar */}
+      {/* Header */}
       <div
         style={{
           display: 'flex',
@@ -163,7 +180,7 @@ export default function CommentsSheet({
         </button>
       </div>
 
-      {/* Comments list - scrollable */}
+      {/* Comments list */}
       <div
         style={{
           flex: 1,
@@ -215,8 +232,27 @@ export default function CommentsSheet({
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <span style={{ fontSize: 13, fontWeight: 600, color: '#FFFFFF' }}>{c.member_name}</span>
                     <span style={{ fontSize: 11, color: '#8A8A7A' }}>{timeAgo(c.created_at)}</span>
+                    {c.member_id === memberId && (
+                      <button
+                        onClick={() => handleDelete(c.id)}
+                        disabled={deleting === c.id}
+                        style={{
+                          marginLeft: 'auto',
+                          padding: '4px 8px',
+                          fontSize: 11,
+                          color: deleting === c.id ? '#555' : '#ff4444',
+                          backgroundColor: 'transparent',
+                          border: 'none',
+                          cursor: deleting === c.id ? 'default' : 'pointer',
+                          borderRadius: 4,
+                          WebkitTapHighlightColor: 'transparent',
+                        }}
+                      >
+                        {deleting === c.id ? '...' : 'Delete'}
+                      </button>
+                    )}
                   </div>
-                  <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.85)', marginTop: 4, lineHeight: 1.5, margin: 0 }}>{c.text}</p>
+                  <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.85)', marginTop: 4, lineHeight: 1.5, margin: '4px 0 0 0' }}>{c.text}</p>
                 </div>
               </div>
             ))}
@@ -224,7 +260,7 @@ export default function CommentsSheet({
         )}
       </div>
 
-      {/* Input bar - pinned to bottom, OUTSIDE scroll context */}
+      {/* Input bar */}
       <div
         style={{
           flexShrink: 0,

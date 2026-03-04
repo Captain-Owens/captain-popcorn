@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { motion, AnimatePresence } from 'framer-motion';
+import { AnimatePresence } from 'framer-motion';
 import { Recommendation, Member } from '@/lib/types';
 import { STORAGE_KEY_MEMBER } from '@/lib/constants';
 import BottomNav from '@/components/BottomNav';
@@ -12,18 +12,10 @@ import SearchOverlay from '@/components/SearchOverlay';
 import CommentsSheet from '@/components/CommentsSheet';
 
 interface WatchedMember {
-  member_id: string;
-  member_name: string;
-  count: number;
-  items: {
-    id: string;
-    title: string;
-    poster_url: string | null;
-    type: string;
-    year: number | null;
-    tmdb_rating: number | null;
-    watched_at: string;
-  }[];
+  id: string;
+  name: string;
+  watched_count: number;
+  items: { title: string; poster_url: string | null; year: number | null; tmdb_rating: number | null }[];
 }
 
 export default function BrowsePage() {
@@ -37,21 +29,19 @@ export default function BrowsePage() {
 
   // Tabs
   const [activeTab, setActiveTab] = useState<'browse' | 'watched'>('browse');
+  const [watchedMembers, setWatchedMembers] = useState<WatchedMember[]>([]);
+  const [watchedLoading, setWatchedLoading] = useState(false);
+  const [expandedMember, setExpandedMember] = useState<string | null>(null);
 
-  // Browse filters
+  // Filters
   const [typeFilter, setTypeFilter] = useState<'all' | 'movie' | 'show'>('all');
   const [memberFilter, setMemberFilter] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<'newest' | 'top_rated' | 'most_watched'>('newest');
 
-  // Watched list
-  const [watchedList, setWatchedList] = useState<WatchedMember[]>([]);
-  const [watchedLoading, setWatchedLoading] = useState(false);
-  const [expandedMember, setExpandedMember] = useState<string | null>(null);
-
   // Comments
   const [commentsOpen, setCommentsOpen] = useState(false);
-  const [commentRecId, setCommentRecId] = useState('');
-  const [commentRecTitle, setCommentRecTitle] = useState('');
+  const [commentsRecId, setCommentsRecId] = useState('');
+  const [commentsRecTitle, setCommentsRecTitle] = useState('');
 
   useEffect(() => {
     const id = localStorage.getItem(STORAGE_KEY_MEMBER);
@@ -86,7 +76,7 @@ export default function BrowsePage() {
     const [recsRes, membersRes, allRes] = await Promise.all([
       fetch(`/api/recommendations?${params.toString()}`),
       fetch('/api/members'),
-      fetch('/api/recommendations?limit=100'),
+      fetch(`/api/recommendations?limit=100`),
     ]);
 
     const recsData = await recsRes.json();
@@ -104,19 +94,17 @@ export default function BrowsePage() {
     fetchData();
   }, [fetchData]);
 
-  async function fetchWatched() {
-    setWatchedLoading(true);
-    try {
-      const res = await fetch('/api/watched/list');
-      const data = await res.json();
-      if (Array.isArray(data)) setWatchedList(data);
-    } catch {}
-    setWatchedLoading(false);
-  }
-
+  // Fetch watched list
   useEffect(() => {
     if (activeTab === 'watched') {
-      fetchWatched();
+      setWatchedLoading(true);
+      fetch('/api/watched/list')
+        .then((r) => r.json())
+        .then((data) => {
+          if (Array.isArray(data)) setWatchedMembers(data);
+          setWatchedLoading(false);
+        })
+        .catch(() => setWatchedLoading(false));
     }
   }, [activeTab]);
 
@@ -141,19 +129,18 @@ export default function BrowsePage() {
   }
 
   function handleOpenComments(recId: string, recTitle: string) {
-    setCommentRecId(recId);
-    setCommentRecTitle(recTitle);
+    setCommentsRecId(recId);
+    setCommentsRecTitle(recTitle);
     setCommentsOpen(true);
   }
 
   return (
-    <div className="px-4 py-6 pb-24 page-enter">
+    <div className="px-4 py-6 pb-24">
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-2xl font-bold">Browse</h1>
         <button
           onClick={() => setSearchOpen(true)}
-          className="flex items-center gap-2 px-3 py-2 bg-charcoal rounded-btn text-sm text-muted btn-press"
-          style={{ minHeight: 44 }}
+          className="flex items-center gap-2 px-3 py-2 bg-charcoal rounded-btn text-sm text-muted btn-press min-h-[40px]"
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <circle cx="11" cy="11" r="8" />
@@ -167,9 +154,8 @@ export default function BrowsePage() {
       <div className="flex gap-2 mb-4">
         <button
           onClick={() => setActiveTab('browse')}
-          className="px-4 py-2.5 rounded-btn text-sm font-medium btn-press transition-colors"
+          className="px-4 py-2 rounded-btn text-sm font-medium btn-press min-h-[40px]"
           style={{
-            minHeight: 44,
             backgroundColor: activeTab === 'browse' ? '#E8A317' : '#2A2A2A',
             color: activeTab === 'browse' ? '#1A1A1A' : '#8A8A7A',
           }}
@@ -178,9 +164,8 @@ export default function BrowsePage() {
         </button>
         <button
           onClick={() => setActiveTab('watched')}
-          className="px-4 py-2.5 rounded-btn text-sm font-medium btn-press transition-colors"
+          className="px-4 py-2 rounded-btn text-sm font-medium btn-press min-h-[40px]"
           style={{
-            minHeight: 44,
             backgroundColor: activeTab === 'watched' ? '#E8A317' : '#2A2A2A',
             color: activeTab === 'watched' ? '#1A1A1A' : '#8A8A7A',
           }}
@@ -197,9 +182,8 @@ export default function BrowsePage() {
               <button
                 key={t}
                 onClick={() => setTypeFilter(t)}
-                className="px-3 py-2 rounded-btn text-xs font-medium btn-press transition-colors"
+                className="px-3 py-2 rounded-btn text-xs font-medium btn-press min-h-[36px] transition-colors"
                 style={{
-                  minHeight: 44,
                   backgroundColor: typeFilter === t ? '#E8A317' : '#2A2A2A',
                   color: typeFilter === t ? '#1A1A1A' : '#8A8A7A',
                 }}
@@ -214,20 +198,20 @@ export default function BrowsePage() {
             <select
               value={memberFilter || ''}
               onChange={(e) => setMemberFilter(e.target.value || null)}
-              className="flex-1 bg-charcoal border border-smoke rounded-btn px-3 py-2 text-sm text-cream"
-              style={{ minHeight: 44 }}
+              className="flex-1 bg-charcoal border border-smoke rounded-btn px-3 py-2 text-sm text-cream min-h-[40px]"
             >
               <option value="">Everyone</option>
               {members.map((m) => (
-                <option key={m.id} value={m.id}>{m.name}</option>
+                <option key={m.id} value={m.id}>
+                  {m.name}
+                </option>
               ))}
             </select>
 
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
-              className="bg-charcoal border border-smoke rounded-btn px-3 py-2 text-sm text-cream"
-              style={{ minHeight: 44 }}
+              className="bg-charcoal border border-smoke rounded-btn px-3 py-2 text-sm text-cream min-h-[40px]"
             >
               <option value="newest">Newest</option>
               <option value="top_rated">Top rated</option>
@@ -244,9 +228,8 @@ export default function BrowsePage() {
             </div>
           ) : recs.length === 0 ? (
             <div className="text-center py-12">
-              <div className="text-5xl mb-4">🔍</div>
-              <p className="text-cream font-medium text-lg mb-1">Nothing matches</p>
-              <p className="text-muted text-sm">Try different filters or add a new pick.</p>
+              <p className="text-muted">Nothing here.</p>
+              <p className="text-sm text-muted mt-1">Try different filters.</p>
             </div>
           ) : (
             <div className="flex flex-col gap-3">
@@ -266,101 +249,83 @@ export default function BrowsePage() {
         </>
       ) : (
         /* Watched tab */
-        <>
+        <div>
           {watchedLoading ? (
             <div className="flex flex-col gap-3">
               {[1, 2, 3].map((i) => (
-                <div key={i} className="skeleton h-16 w-full rounded-card" />
+                <div key={i} className="bg-charcoal rounded-card p-4">
+                  <div className="skeleton h-5 w-32 mb-2" />
+                  <div className="skeleton h-3 w-20" />
+                </div>
               ))}
             </div>
-          ) : watchedList.length === 0 ? (
+          ) : watchedMembers.length === 0 ? (
             <div className="text-center py-12">
-              <div className="text-5xl mb-4">👀</div>
-              <p className="text-cream font-medium text-lg mb-1">No one has watched anything yet</p>
-              <p className="text-muted text-sm">Start marking titles as watched!</p>
+              <p className="text-muted">Nobody has watched anything yet.</p>
             </div>
           ) : (
-            <div className="flex flex-col gap-3">
-              {watchedList.map((wm) => (
-                <div key={wm.member_id}>
+            <div className="flex flex-col gap-2">
+              {watchedMembers.map((wm) => (
+                <div key={wm.id} className="bg-charcoal rounded-card overflow-hidden">
                   <button
-                    onClick={() => setExpandedMember(
-                      expandedMember === wm.member_id ? null : wm.member_id
-                    )}
-                    className="w-full flex items-center justify-between p-4 bg-charcoal rounded-card btn-press"
-                    style={{ minHeight: 56, boxShadow: '0 2px 12px rgba(0,0,0,0.3)' }}
+                    onClick={() => setExpandedMember(expandedMember === wm.id ? null : wm.id)}
+                    className="w-full flex items-center gap-3 p-4 text-left btn-press"
                   >
-                    <div className="flex items-center gap-3">
-                      <div
-                        className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold"
-                        style={{ backgroundColor: '#3A3A3A', color: '#E8A317' }}
-                      >
-                        {wm.member_name.charAt(0).toUpperCase()}
-                      </div>
-                      <div className="text-left">
-                        <p className="text-sm font-medium text-cream">{wm.member_name}</p>
-                        <p className="text-xs text-muted">{wm.count} watched</p>
-                      </div>
+                    <div
+                      className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0"
+                      style={{ backgroundColor: '#3A3A3A', color: '#E8A317' }}
+                    >
+                      {wm.name.charAt(0).toUpperCase()}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-cream">{wm.name}</p>
+                      <p className="text-xs text-muted">{wm.watched_count} watched</p>
                     </div>
                     <svg
-                      width="16" height="16" viewBox="0 0 24 24" fill="none"
-                      stroke="#8A8A7A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="#8A8A7A"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
                       style={{
-                        transform: expandedMember === wm.member_id ? 'rotate(180deg)' : 'rotate(0)',
-                        transition: 'transform 200ms ease',
+                        transform: expandedMember === wm.id ? 'rotate(180deg)' : 'rotate(0deg)',
+                        transition: 'transform 0.2s',
                       }}
                     >
                       <polyline points="6 9 12 15 18 9" />
                     </svg>
                   </button>
-
-                  <AnimatePresence>
-                    {expandedMember === wm.member_id && (
-                      <motion.div
-                        initial={{ height: 0, opacity: 0 }}
-                        animate={{ height: 'auto', opacity: 1 }}
-                        exit={{ height: 0, opacity: 0 }}
-                        transition={{ duration: 0.2 }}
-                        className="overflow-hidden"
-                      >
-                        <div className="flex flex-col gap-2 pt-2 pl-4">
-                          {wm.items.map((item) => (
-                            <div
-                              key={item.id}
-                              className="flex items-center gap-3 p-2 rounded-btn bg-smoke/50"
-                            >
-                              <div className="w-10 h-14 flex-shrink-0 rounded overflow-hidden bg-smoke">
-                                {item.poster_url ? (
-                                  <img
-                                    src={item.poster_url}
-                                    alt={item.title}
-                                    className="w-full h-full object-cover"
-                                    loading="lazy"
-                                  />
-                                ) : (
-                                  <div className="w-full h-full flex items-center justify-center text-xs text-muted">🎬</div>
-                                )}
-                              </div>
-                              <div className="min-w-0 flex-1">
-                                <p className="text-sm font-medium text-cream truncate">{item.title}</p>
-                                <div className="flex items-center gap-2 text-xs text-muted">
-                                  {item.year && <span>{item.year}</span>}
-                                  {item.tmdb_rating && (
-                                    <span className="text-warm-gold">★ {item.tmdb_rating}</span>
-                                  )}
-                                </div>
-                              </div>
+                  {expandedMember === wm.id && wm.items && (
+                    <div className="px-4 pb-4">
+                      <div className="flex flex-col gap-2">
+                        {wm.items.map((item, i) => (
+                          <div key={i} className="flex items-center gap-3 py-2 border-t border-smoke">
+                            <div className="w-8 h-12 flex-shrink-0 rounded overflow-hidden bg-smoke">
+                              {item.poster_url ? (
+                                <img src={item.poster_url} alt={item.title} className="w-full h-full object-cover" />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center text-xs text-muted">?</div>
+                              )}
                             </div>
-                          ))}
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
+                            <div className="min-w-0 flex-1">
+                              <p className="text-sm text-cream truncate">{item.title}</p>
+                              <p className="text-xs text-muted">
+                                {item.year}{item.tmdb_rating ? ` · ${item.tmdb_rating}/10` : ''}
+                              </p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
           )}
-        </>
+        </div>
       )}
 
       <SearchOverlay
@@ -374,8 +339,8 @@ export default function BrowsePage() {
       <CommentsSheet
         isOpen={commentsOpen}
         onClose={() => setCommentsOpen(false)}
-        recommendationId={commentRecId}
-        recommendationTitle={commentRecTitle}
+        recommendationId={commentsRecId}
+        recommendationTitle={commentsRecTitle}
         memberId={memberId || ''}
       />
 

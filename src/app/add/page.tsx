@@ -21,9 +21,9 @@ export default function AddPage() {
   const [comment, setComment] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [dupeTitle, setDupeTitle] = useState<string | null>(null);
   const debounceRef = useRef<NodeJS.Timeout>();
   const [manualTitle, setManualTitle] = useState('');
-  const [duplicateTitle, setDuplicateTitle] = useState<string | null>(null);
 
   useEffect(() => {
     const id = localStorage.getItem(STORAGE_KEY_MEMBER);
@@ -66,19 +66,18 @@ export default function AddPage() {
 
     setSubmitting(true);
 
-    // Check for duplicates
+    // Check for duplicates first
     try {
       const checkRes = await fetch('/api/recommendations?limit=200');
-      const existing = await checkRes.json();
-      if (Array.isArray(existing)) {
-        const tmdbMatch = selected?.tmdb_id && existing.find(
-          (r: any) => r.tmdb_id === selected.tmdb_id
-        );
-        const titleMatch = !tmdbMatch && existing.find(
-          (r: any) => r.title.toLowerCase() === title.toLowerCase()
-        );
-        if (tmdbMatch || titleMatch) {
-          setDuplicateTitle(title);
+      const allRecs = await checkRes.json();
+      if (Array.isArray(allRecs)) {
+        const dupe = allRecs.find((r: any) => {
+          if (selected?.tmdb_id && r.tmdb_id === selected.tmdb_id) return true;
+          if (r.title.toLowerCase().trim() === title.toLowerCase().trim()) return true;
+          return false;
+        });
+        if (dupe) {
+          setDupeTitle(dupe.title);
           setSubmitting(false);
           return;
         }
@@ -118,7 +117,7 @@ export default function AddPage() {
   const hasTitle = selected || manualTitle.trim().length > 0;
 
   return (
-    <div className="px-4 py-6 pb-24 page-enter">
+    <div className="px-4 py-6 pb-24">
       <h1 className="text-2xl font-bold mb-6">Add a pick</h1>
 
       {/* Success state */}
@@ -139,41 +138,31 @@ export default function AddPage() {
 
       {/* Duplicate popup */}
       <AnimatePresence>
-        {duplicateTitle && (
+        {dupeTitle && (
           <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.9 }}
             className="fixed inset-0 z-50 flex items-center justify-center bg-rich-black/90 px-6"
-            onClick={() => setDuplicateTitle(null)}
           >
-            <motion.div
-              initial={{ scale: 0.8, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.8, opacity: 0 }}
-              transition={{ type: 'spring', damping: 20, stiffness: 300 }}
-              className="bg-charcoal rounded-card p-6 text-center max-w-[320px] w-full"
-              style={{ boxShadow: '0 4px 30px rgba(0,0,0,0.5)' }}
-              onClick={(e: React.MouseEvent) => e.stopPropagation()}
-            >
-              <div className="text-5xl mb-4">🤝</div>
-              <p className="text-lg font-bold text-cream mb-2">Great minds think alike!</p>
+            <div className="bg-charcoal rounded-card p-6 text-center max-w-sm w-full">
+              <div className="text-4xl mb-3">🤝</div>
+              <h3 className="text-lg font-bold text-cream mb-2">Great minds think alike!</h3>
               <p className="text-sm text-muted mb-4">
-                <span className="text-warm-gold font-medium">{duplicateTitle}</span> has already been added by someone in the crew.
+                <span className="text-warm-gold font-medium">{dupeTitle}</span> has already been added by someone in the crew.
               </p>
               <button
                 onClick={() => {
-                  setDuplicateTitle(null);
+                  setDupeTitle(null);
                   setSelected(null);
                   setQuery('');
                   setManualTitle('');
                 }}
-                className="px-6 py-3 bg-warm-gold text-rich-black rounded-btn font-bold btn-press"
-                style={{ minHeight: 44 }}
+                className="px-6 py-3 bg-warm-gold text-rich-black rounded-btn font-bold btn-press min-h-[44px]"
               >
                 Got it
               </button>
-            </motion.div>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
@@ -227,7 +216,9 @@ export default function AddPage() {
                 </button>
               ))}
               {!searching && results.length === 0 && query.length >= 2 && (
-                <div className="p-3 text-sm text-muted">No results. Add manually.</div>
+                <div className="p-3 text-sm text-muted">
+                  No results. Add manually.
+                </div>
               )}
             </div>
           )}
@@ -250,7 +241,10 @@ export default function AddPage() {
               <p className="text-xs text-warm-gold mt-1">{selected.tmdb_rating}/10 TMDB</p>
             )}
           </div>
-          <button onClick={() => setSelected(null)} className="text-muted hover:text-cream btn-press p-1">
+          <button
+            onClick={() => setSelected(null)}
+            className="text-muted hover:text-cream btn-press p-1"
+          >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <line x1="18" y1="6" x2="6" y2="18" />
               <line x1="6" y1="6" x2="18" y2="18" />

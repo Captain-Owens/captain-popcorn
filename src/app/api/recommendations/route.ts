@@ -8,6 +8,7 @@ export async function GET(req: NextRequest) {
   const platform = params.get('platform');
   const filterMemberId = params.get('member_id');
   const householdId = params.get('household_id');
+  const minRating = params.get('min_rating');
   const sort = params.get('sort') || 'newest';
   const limit = parseInt(params.get('limit') || '50', 10);
 
@@ -18,25 +19,23 @@ export async function GET(req: NextRequest) {
   if (type && type !== 'all') {
     query = query.eq('type', type);
   }
-
   if (platform) {
     query = query.eq('platform', platform);
   }
-
   if (filterMemberId) {
     query = query.eq('member_id', filterMemberId);
   }
-
   if (householdId) {
     query = query.eq('members.household_id', householdId);
   }
-
+  if (minRating) {
+    query = query.gte('rating', parseInt(minRating, 10));
+  }
   if (sort === 'newest') {
     query = query.order('created_at', { ascending: false });
   } else if (sort === 'top_rated') {
     query = query.order('rating', { ascending: false, nullsFirst: false });
   }
-
   query = query.limit(limit);
 
   const { data: recs, error } = await query;
@@ -66,24 +65,14 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  // Fetch likes
-  const recIds = (recs || []).map((r) => r.id);
-  let likeCounts: Record<string, number> = {};
-  let myLikes: Set<string> = new Set();
-
-  if (recIds.length > 0) {
-    const { data: allLikes } = await supabase
-      .from('likes')
-      .select('recommendation_id, member_id')
-      .in('recommendation_id', recIds);
-
-    if (allLikes) {
-      for (const l of allLikes) {
-        likeCounts[l.recommendation_id] = (likeCounts[l.recommendation_id] || 0) + 1;
-        if (memberId && l.member_id === memberId) {
-          myLikes.add(l.recommendation_id);
-        }
-      }
+  // Get comment counts
+  let commentCounts: Record<string, number> = {};
+  const { data: commentData } = await supabase
+    .from('comments')
+    .select('recommendation_id');
+  if (commentData) {
+    for (const c of commentData) {
+      commentCounts[c.recommendation_id] = (commentCounts[c.recommendation_id] || 0) + 1;
     }
   }
 
@@ -94,9 +83,8 @@ export async function GET(req: NextRequest) {
       recommender_name: (r as any).members?.name || 'Unknown',
       household_name: (r as any).members?.households?.name || null,
       watch_count: watchCounts[r.id] || 0,
+      comment_count: commentCounts[r.id] || 0,
       is_watched: false,
-      like_count: likeCounts[r.id] || 0,
-      is_liked: myLikes.has(r.id),
     }));
 
   if (sort === 'most_watched') {
@@ -108,51 +96,13 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   const body = await req.json();
-  const { member_id, title, type, tmdb_id, poster_url, year, genre, tmdb_rating, platform, comment } = body;
+  const { member_id, title, type, tmdb_id, poster_url, year, genre, tmdb_rating, platform, rating, comment } = body;
 
   if (!member_id || !title || !type) {
     return NextResponse.json(
       { error: 'member_id, title, and type required.' },
       { status: 400 }
     );
-  }
-
-  // Fetch cast/crew from TMDB if we have a tmdb_id
-  let castCrew = null;
-  if (tmdb_id) {
-    const apiKey = process.env.TMDB_API_KEY;
-    if (apiKey) {
-      try {
-        const mediaType = type === 'show' ? 'tv' : 'movie';
-        const creditsRes = await fetch(
-          `https://api.themoviedb.org/3/${mediaType}/${tmdb_id}/credits?api_key=${apiKey}`
-        );
-        const creditsData = await creditsRes.json();
-
-        const cast = (creditsData.cast || [])
-          .slice(0, 5)
-          .map((c: any) => c.name);
-
-        let directors = (creditsData.crew || [])
-          .filter((c: any) => c.job === 'Director')
-          .slice(0, 2)
-          .map((c: any) => c.name);
-
-        if (mediaType === 'tv' && directors.length === 0) {
-          const showRes = await fetch(
-            `https://api.themoviedb.org/3/tv/${tmdb_id}?api_key=${apiKey}`
-          );
-          const showData = await showRes.json();
-          directors = (showData.created_by || [])
-            .slice(0, 2)
-            .map((c: any) => c.name);
-        }
-
-        castCrew = { cast, directors };
-      } catch {
-        // Non-critical, skip
-      }
-    }
   }
 
   const { data, error } = await supabase
@@ -167,9 +117,8 @@ export async function POST(req: NextRequest) {
       genre: genre || null,
       tmdb_rating: tmdb_rating || null,
       platform: platform || null,
-      rating: null,
+      rating: rating || null,
       comment: comment ? comment.slice(0, 280) : null,
-      cast_crew: castCrew,
     })
     .select()
     .single();

@@ -29,12 +29,8 @@ export interface Recommendation {
   recommender_name?: string;
   household_name?: string;
   watch_count?: number;
+  comment_count?: number;
   is_watched?: boolean;
-  // Likes
-  like_count?: number;
-  is_liked?: boolean;
-  // Cast/crew
-  cast_crew?: { cast: string[]; directors: string[] } | null;
 }
 
 export interface Watched {

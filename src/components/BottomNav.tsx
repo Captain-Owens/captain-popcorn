@@ -48,7 +48,6 @@ export default function BottomNav() {
         right: 0,
         zIndex: 9998,
         backgroundColor: '#111111',
-        borderTop: '1px solid #2A2A2A',
         transform: 'translateZ(0)',
         WebkitTransform: 'translateZ(0)',
         backfaceVisibility: 'hidden',
@@ -56,6 +55,10 @@ export default function BottomNav() {
         willChange: 'transform',
       }}
     >
+      {/* Border line */}
+      <div style={{ height: 1, backgroundColor: '#3A3A3A' }} />
+
+      {/* Nav content - centered in its own container */}
       <div
         style={{
           maxWidth: 480,
@@ -63,8 +66,7 @@ export default function BottomNav() {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-around',
-          height: 64,
-          paddingBottom: 'env(safe-area-inset-bottom)',
+          height: 60,
         }}
       >
         {NAV_ITEMS.map((item) => {
@@ -78,7 +80,7 @@ export default function BottomNav() {
                 flexDirection: 'column',
                 alignItems: 'center',
                 justifyContent: 'center',
-                gap: 4,
+                gap: 2,
                 minWidth: 64,
                 minHeight: 48,
                 textDecoration: 'none',
@@ -99,6 +101,14 @@ export default function BottomNav() {
           );
         })}
       </div>
+
+      {/* Safe area spacer - sits BELOW the nav content */}
+      <div
+        style={{
+          height: 'env(safe-area-inset-bottom)',
+          backgroundColor: '#111111',
+        }}
+      />
     </nav>
   );
 }

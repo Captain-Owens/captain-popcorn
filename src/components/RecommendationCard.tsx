@@ -1,7 +1,6 @@
 'use client';
 
-import { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { Recommendation } from '@/lib/types';
 import { PLATFORMS } from '@/lib/constants';
 
@@ -21,55 +20,19 @@ export default function RecommendationCard({
   showWatched = false,
 }: RecommendationCardProps) {
   const platform = PLATFORMS.find((p) => p.slug === rec.platform);
-  const [showCelebration, setShowCelebration] = useState(false);
-
-  function handleWatch() {
-    setShowCelebration(true);
-    setTimeout(() => {
-      onWatch(rec.id);
-    }, 800);
-  }
+  const commentCount = rec.comment_count || 0;
 
   return (
     <motion.div
       layout
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, x: -100 }}
+      exit={{ opacity: 0, y: -8 }}
       transition={{ duration: 0.2 }}
-      className="relative flex gap-3 p-3 bg-charcoal rounded-card"
-      style={{ boxShadow: '0 2px 12px rgba(0,0,0,0.3)' }}
+      className="flex gap-3 p-4 bg-charcoal rounded-card"
     >
-      {/* Celebration overlay */}
-      <AnimatePresence>
-        {showCelebration && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="absolute inset-0 z-20 flex items-center justify-center bg-rich-black/80 rounded-card"
-          >
-            <motion.div
-              initial={{ scale: 0 }}
-              animate={{ scale: 1, rotate: [0, -10, 10, 0] }}
-              transition={{ type: 'spring', damping: 10, stiffness: 200 }}
-              className="text-center"
-            >
-              <motion.div
-                className="text-5xl mb-2"
-                animate={{ y: [0, -10, 0] }}
-                transition={{ duration: 0.4, delay: 0.2 }}
-              >
-                🍿
-              </motion.div>
-              <p className="text-warm-gold font-bold">Nice pick!</p>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
       {/* Poster */}
-      <div className="w-24 h-36 flex-shrink-0 rounded-btn overflow-hidden bg-smoke">
+      <div className="w-20 h-28 flex-shrink-0 rounded-btn overflow-hidden bg-smoke">
         {rec.poster_url ? (
           <img
             src={rec.poster_url}
@@ -78,8 +41,8 @@ export default function RecommendationCard({
             loading="lazy"
           />
         ) : (
-          <div className="w-full h-full flex items-center justify-center text-muted text-lg">
-            🎬
+          <div className="w-full h-full flex items-center justify-center text-muted text-xs">
+            No poster
           </div>
         )}
       </div>
@@ -94,19 +57,16 @@ export default function RecommendationCard({
           {rec.year && <span>{rec.year}</span>}
           {rec.genre && (
             <>
-              <span style={{ opacity: 0.4 }}>·</span>
+              <span>·</span>
               <span className="truncate">{rec.genre}</span>
             </>
           )}
         </div>
 
-        <div className="flex items-center gap-2 text-xs mt-0.5 flex-wrap">
+        <div className="flex items-center gap-2 text-xs">
           {rec.tmdb_rating && (
-            <span
-              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium"
-              style={{ backgroundColor: 'rgba(232,163,23,0.15)', color: '#E8A317' }}
-            >
-              ★ {rec.tmdb_rating}
+            <span className="text-warm-gold font-medium">
+              {rec.tmdb_rating}/10
             </span>
           )}
           {platform && (
@@ -123,56 +83,69 @@ export default function RecommendationCard({
         </div>
 
         <div className="flex items-center gap-1 text-xs text-muted mt-0.5">
-          <span className="font-medium text-cream">{rec.recommender_name}</span>
-          {rec.comment && (
-            <>
-              <span style={{ opacity: 0.3 }}>·</span>
-              <span className="italic truncate">&ldquo;{rec.comment}&rdquo;</span>
-            </>
+          <span className="font-medium text-cream">
+            {rec.recommender_name}
+          </span>
+          {rec.rating && (
+            <span className="text-warm-gold">
+              {'★'.repeat(rec.rating)}
+              {'☆'.repeat(5 - rec.rating)}
+            </span>
           )}
         </div>
 
-        {/* Actions row */}
+        {rec.comment && (
+          <p className="text-xs text-muted italic mt-0.5 line-clamp-2">
+            &ldquo;{rec.comment}&rdquo;
+          </p>
+        )}
+
         <div className="flex items-center gap-2 mt-auto pt-2">
           {rec.is_watched || showWatched ? (
             <button
               onClick={() => onUnwatch?.(rec.id)}
-              className="flex items-center gap-1.5 px-4 py-2.5 rounded-btn text-xs font-medium btn-press bg-smoke text-muted"
-              style={{ minHeight: 44 }}
+              className="flex items-center gap-1 px-3 py-2 rounded-btn text-xs font-medium btn-press min-h-[36px] bg-smoke text-muted"
             >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <polyline points="20 6 9 17 4 12" />
               </svg>
               Watched
             </button>
           ) : (
             <button
-              onClick={handleWatch}
-              className="flex items-center gap-1.5 px-4 py-2.5 rounded-btn text-xs font-bold btn-press bg-deep-red text-cream"
-              style={{ minHeight: 44 }}
+              onClick={() => onWatch(rec.id)}
+              className="flex items-center gap-1 px-3 py-2 rounded-btn text-xs font-medium btn-press min-h-[36px] bg-deep-red text-cream"
             >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                <circle cx="12" cy="12" r="3" />
+              </svg>
               Seen it?
             </button>
           )}
 
+          {/* Comment button */}
           {onComment && (
             <button
               onClick={() => onComment(rec.id, rec.title)}
-              className="flex items-center gap-1.5 px-3 py-2.5 rounded-btn text-xs font-medium btn-press bg-smoke text-muted"
-              style={{ minHeight: 44 }}
+              className="flex items-center gap-1 px-3 py-2 rounded-btn text-xs font-medium btn-press min-h-[36px] bg-smoke text-muted"
             >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
               </svg>
-              Comment
+              {commentCount > 0 ? commentCount : ''}
             </button>
           )}
 
-          {rec.watch_count !== undefined && rec.watch_count > 0 && (
-            <span className="text-xs text-muted ml-auto">
-              {rec.watch_count} watched
-            </span>
-          )}
+          {/* Watch count + comment indicator */}
+          <div className="flex items-center gap-2 ml-auto text-xs text-muted">
+            {commentCount > 0 && !onComment && (
+              <span title={commentCount + ' comments'}>💬 {commentCount}</span>
+            )}
+            {rec.watch_count !== undefined && rec.watch_count > 0 && (
+              <span>{rec.watch_count} watched</span>
+            )}
+          </div>
         </div>
       </div>
     </motion.div>
