@@ -14,23 +14,25 @@ export async function GET(req: NextRequest) {
     watchedIds = (watched || []).map((w) => w.recommendation_id);
   }
 
-  // Get all recommendations
-  let query = supabase
+  const { data: recs } = await supabase
     .from('recommendations')
     .select('*, members!inner(name, household_id, households(name))');
-
-  if (watchedIds.length > 0) {
-    query = query.not('id', 'in', '(' + watchedIds.join(',') + ')');
-  }
-
-  const { data: recs } = await query;
 
   if (!recs || recs.length === 0) {
     return NextResponse.json(null);
   }
 
-  // Get all likes and count per recommendation
-  const recIds = recs.map((r) => r.id);
+  // Filter out watched
+  const unwatched = watchedIds.length > 0
+    ? recs.filter((r) => !watchedIds.includes(r.id))
+    : recs;
+
+  if (unwatched.length === 0) {
+    return NextResponse.json(null);
+  }
+
+  // Get like counts
+  const recIds = unwatched.map((r) => r.id);
   const { data: allLikes } = await supabase
     .from('likes')
     .select('recommendation_id')
@@ -43,8 +45,8 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  // Sort by most likes, then by newest as tiebreaker
-  const sorted = recs
+  // Sort by most likes, then newest
+  const sorted = unwatched
     .map((r) => ({ ...r, like_count: likeCounts[r.id] || 0 }))
     .sort((a, b) => {
       if (b.like_count !== a.like_count) return b.like_count - a.like_count;
@@ -53,16 +55,10 @@ export async function GET(req: NextRequest) {
 
   const pick = sorted[0];
 
-  const { data: counts } = await supabase
-    .from('watched')
-    .select('recommendation_id')
-    .eq('recommendation_id', pick.id);
-
   const result = {
     ...pick,
     recommender_name: (pick as any).members?.name || 'Unknown',
     household_name: (pick as any).members?.households?.name || null,
-    watch_count: counts?.length || 0,
     is_watched: false,
   };
 

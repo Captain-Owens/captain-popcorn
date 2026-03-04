@@ -11,12 +11,23 @@ import RecommendationCard from '@/components/RecommendationCard';
 import SkeletonCard from '@/components/SkeletonCard';
 import SlotMachine from '@/components/SlotMachine';
 
+interface DiscoverItem {
+  tmdb_id: number;
+  title: string;
+  poster_url: string | null;
+  year: string | null;
+  tmdb_rating: number | null;
+  type: 'movie' | 'show';
+  reason: string;
+}
+
 export default function HomePage() {
   const router = useRouter();
   const [memberId, setMemberId] = useState<string | null>(null);
   const [memberName, setMemberName] = useState<string>('');
   const [feed, setFeed] = useState<Recommendation[]>([]);
   const [topRated, setTopRated] = useState<Recommendation | null>(null);
+  const [discover, setDiscover] = useState<DiscoverItem | null>(null);
   const [loading, setLoading] = useState(true);
   const [slotOpen, setSlotOpen] = useState(false);
 
@@ -35,16 +46,22 @@ export default function HomePage() {
     if (!memberId) return;
     setLoading(true);
 
-    const [feedRes, topRes] = await Promise.all([
+    const [feedRes, topRes, discoverRes] = await Promise.all([
       fetch(`/api/recommendations?exclude_watched_by=${memberId}&sort=newest&limit=20`),
       fetch(`/api/recommendations/top?exclude_watched_by=${memberId}`),
+      fetch('/api/discover'),
     ]);
 
     const feedData = await feedRes.json();
     const topData = await topRes.json();
+    const discoverData = await discoverRes.json();
 
     if (Array.isArray(feedData)) setFeed(feedData);
     if (topData) setTopRated(topData);
+    if (Array.isArray(discoverData) && discoverData.length > 0) {
+      // Pick a random discover suggestion each load
+      setDiscover(discoverData[Math.floor(Math.random() * discoverData.length)]);
+    }
 
     setLoading(false);
   }, [memberId]);
@@ -53,7 +70,6 @@ export default function HomePage() {
     fetchData();
   }, [fetchData]);
 
-  // Realtime subscriptions
   useEffect(() => {
     if (!memberId) return;
 
@@ -69,24 +85,9 @@ export default function HomePage() {
         { event: '*', schema: 'public', table: 'watched' },
         () => fetchData()
       )
-
       .subscribe();
 
-  
-  async function handleDelete(recId: string) {
-    if (!memberId) return;
-
-    // Optimistic remove
-    setFeed((prev) => prev.filter((r) => r.id !== recId));
-
-    await fetch('/api/recommendations/delete', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ recommendation_id: recId, member_id: memberId }),
-    });
-  }
-
-  return () => {
+    return () => {
       supabase.removeChannel(channel);
     };
   }, [memberId, fetchData]);
@@ -104,20 +105,16 @@ export default function HomePage() {
 
   async function handleUnwatch(recId: string) {
     if (!memberId) return;
-
     await fetch('/api/watched', {
       method: 'DELETE',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ member_id: memberId, recommendation_id: recId }),
     });
-
     fetchData();
   }
 
   async function handleLike(recId: string) {
     if (!memberId) return;
-
-    // Optimistic update
     setFeed((prev) =>
       prev.map((r) =>
         r.id === recId
@@ -125,7 +122,6 @@ export default function HomePage() {
           : r
       )
     );
-
     await fetch('/api/like', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -135,8 +131,6 @@ export default function HomePage() {
 
   async function handleUnlike(recId: string) {
     if (!memberId) return;
-
-    // Optimistic update
     setFeed((prev) =>
       prev.map((r) =>
         r.id === recId
@@ -144,7 +138,6 @@ export default function HomePage() {
           : r
       )
     );
-
     await fetch('/api/like', {
       method: 'DELETE',
       headers: { 'Content-Type': 'application/json' },
@@ -152,13 +145,9 @@ export default function HomePage() {
     });
   }
 
-
   async function handleDelete(recId: string) {
     if (!memberId) return;
-
-    // Optimistic remove
     setFeed((prev) => prev.filter((r) => r.id !== recId));
-
     await fetch('/api/recommendations/delete', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -180,28 +169,26 @@ export default function HomePage() {
             localStorage.removeItem(STORAGE_KEY_MEMBER_NAME);
             router.replace('/pick');
           }}
-          className="text-sm text-muted btn-press"
+          className="text-sm text-cream/70 btn-press"
         >
           Switch user
         </button>
       </div>
 
-      {/* Hero section */}
-      <div className="grid grid-cols-2 gap-3 mb-8">
-        {/* I'm Feeling Lucky */}
-        <button
-          onClick={() => setSlotOpen(true)}
-          className="bg-charcoal rounded-card p-4 flex flex-col items-center justify-center gap-3 min-h-[140px] btn-press border border-smoke hover:border-warm-gold transition-colors"
-        >
-          <div className="text-3xl">🎰</div>
-          <span className="text-sm font-bold text-warm-gold text-center leading-tight">
-            Feeling lucky?
-          </span>
-        </button>
+      {/* Row 1: Feeling Lucky - full width */}
+      <button
+        onClick={() => setSlotOpen(true)}
+        className="w-full bg-charcoal rounded-card p-6 flex items-center justify-center gap-4 min-h-[80px] btn-press border border-smoke hover:border-warm-gold transition-colors mb-3"
+      >
+        <span className="text-3xl">🎰</span>
+        <span className="text-lg font-bold text-warm-gold">Feeling lucky?</span>
+      </button>
 
-        {/* Top Rated / Most Liked */}
-        <div className="bg-charcoal rounded-card p-3 flex flex-col min-h-[140px] border border-smoke overflow-hidden">
-          <span className="text-xs text-muted mb-2 font-medium">Top pick</span>
+      {/* Row 2: Top Pick + Discover */}
+      <div className="grid grid-cols-2 gap-3 mb-8">
+        {/* Top Pick */}
+        <div className="bg-charcoal rounded-card p-3 flex flex-col min-h-[180px] border border-smoke overflow-hidden">
+          <span className="text-xs text-cream/50 mb-2 font-medium">Top pick</span>
           {loading ? (
             <div className="flex-1 flex flex-col gap-2">
               <div className="skeleton flex-1 rounded-btn" />
@@ -237,9 +224,46 @@ export default function HomePage() {
             </p>
           )}
         </div>
+
+        {/* Discover */}
+        <div className="bg-charcoal rounded-card p-3 flex flex-col min-h-[180px] border border-smoke overflow-hidden">
+          <span className="text-xs text-cream/50 mb-2 font-medium">Discover</span>
+          {loading ? (
+            <div className="flex-1 flex flex-col gap-2">
+              <div className="skeleton flex-1 rounded-btn" />
+              <div className="skeleton h-3 w-3/4" />
+            </div>
+          ) : discover ? (
+            <div className="flex-1 flex flex-col">
+              <div className="flex-1 rounded-btn overflow-hidden bg-smoke mb-2">
+                {discover.poster_url ? (
+                  <img
+                    src={discover.poster_url}
+                    alt={discover.title}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-muted text-sm">
+                    🔮
+                  </div>
+                )}
+              </div>
+              <p className="text-xs font-medium text-cream truncate">
+                {discover.title}
+              </p>
+              <p className="text-xs text-warm-gold truncate">
+                {discover.reason}
+              </p>
+            </div>
+          ) : (
+            <p className="text-xs text-muted flex-1 flex items-center">
+              Add more picks to unlock.
+            </p>
+          )}
+        </div>
       </div>
 
-      {/* Recent feed */}
+      {/* Recently added */}
       <h2 className="text-lg font-bold mb-4">Recently added</h2>
 
       {loading ? (
@@ -251,8 +275,8 @@ export default function HomePage() {
       ) : feed.length === 0 ? (
         <div className="text-center py-12">
           <div className="text-4xl mb-3">🍿</div>
-          <p className="text-muted">No recommendations yet.</p>
-          <p className="text-muted text-sm">Be the first to add one.</p>
+          <p className="text-cream/70">No recommendations yet.</p>
+          <p className="text-cream/50 text-sm">Be the first to add one.</p>
         </div>
       ) : (
         <div className="flex flex-col gap-3">
@@ -273,7 +297,6 @@ export default function HomePage() {
         </div>
       )}
 
-      {/* Slot Machine Modal */}
       <SlotMachine
         isOpen={slotOpen}
         onClose={() => setSlotOpen(false)}
