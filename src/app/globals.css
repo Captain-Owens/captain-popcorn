@@ -125,3 +125,46 @@ input::placeholder, textarea::placeholder {
     font-size: 16px;
   }
 }
+
+/* Card depth */
+.card-elevated {
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.3), 0 1px 4px rgba(0, 0, 0, 0.2);
+}
+
+/* Feeling Lucky glow */
+@keyframes lucky-glow {
+  0%, 100% { box-shadow: 0 0 20px rgba(232, 163, 23, 0.2); }
+  50% { box-shadow: 0 0 30px rgba(232, 163, 23, 0.4); }
+}
+
+.lucky-glow {
+  animation: lucky-glow 2s ease-in-out infinite;
+  border: 2px solid var(--warm-gold);
+}
+
+/* Toast animation helper */
+@keyframes toast-in {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+/* Page transition */
+@keyframes page-fade-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.page-enter {
+  animation: page-fade-in 200ms ease-out;
+}
+
+/* Smooth touch scrolling */
+.scroll-snap-x {
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+}
+
+.scroll-snap-x > * {
+  scroll-snap-align: start;
+}

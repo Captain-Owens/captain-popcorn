@@ -10,6 +10,7 @@ import BottomNav from '@/components/BottomNav';
 import RecommendationCard from '@/components/RecommendationCard';
 import SkeletonCard from '@/components/SkeletonCard';
 import SearchOverlay from '@/components/SearchOverlay';
+import { useToast } from '@/components/Toast';
 
 export default function BrowsePage() {
   const router = useRouter();
@@ -19,6 +20,7 @@ export default function BrowsePage() {
   const [members, setMembers] = useState<Member[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchOpen, setSearchOpen] = useState(false);
+  const { showToast } = useToast();
 
   // Filters
   const [typeFilter, setTypeFilter] = useState<'all' | 'movie' | 'show'>('all');
@@ -109,7 +111,7 @@ export default function BrowsePage() {
   async function handleWatch(recId: string) {
     if (!memberId) return;
     setRecs((prev) => prev.filter((r) => r.id !== recId));
-
+    showToast('Marked as watched', '✅');
     await fetch('/api/watched', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -179,12 +181,12 @@ export default function BrowsePage() {
   }
 
   return (
-    <div className="px-4 py-6 pb-24">
+    <div className="px-4 py-6 pb-24 page-enter">
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-2xl font-bold">Browse</h1>
         <button
           onClick={() => setSearchOpen(true)}
-          className="flex items-center gap-2 px-3 py-2 bg-charcoal rounded-btn text-sm text-muted btn-press min-h-[40px]"
+          className="flex items-center gap-2 px-3 py-2 bg-charcoal rounded-btn text-sm text-muted btn-press min-h-[44px]"
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <circle cx="11" cy="11" r="8" />
@@ -201,7 +203,7 @@ export default function BrowsePage() {
           <button
             key={t}
             onClick={() => setTypeFilter(t)}
-            className="px-3 py-2 rounded-btn text-xs font-medium btn-press min-h-[36px] transition-colors"
+            className="px-3 py-2 rounded-btn text-xs font-medium btn-press min-h-[44px] transition-colors"
             style={{
               backgroundColor: typeFilter === t ? '#E8A317' : '#2B2219',
               color: typeFilter === t ? '#1C1410' : '#D0C8C0',
@@ -216,7 +218,7 @@ export default function BrowsePage() {
         <select
           value={memberFilter || ''}
           onChange={(e) => setMemberFilter(e.target.value || null)}
-          className="flex-1 bg-charcoal border border-smoke rounded-btn px-3 py-2 text-sm text-cream min-h-[40px]"
+          className="flex-1 bg-charcoal border border-smoke rounded-btn px-3 py-2 text-sm text-cream min-h-[44px]"
         >
           <option value="">Everyone</option>
           {members.map((m) => (
@@ -229,7 +231,7 @@ export default function BrowsePage() {
         <select
           value={sortBy}
           onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
-          className="bg-charcoal border border-smoke rounded-btn px-3 py-2 text-sm text-cream min-h-[40px]"
+          className="bg-charcoal border border-smoke rounded-btn px-3 py-2 text-sm text-cream min-h-[44px]"
         >
           <option value="newest">Newest</option>
           <option value="top_rated">Most liked</option>
@@ -293,8 +295,9 @@ export default function BrowsePage() {
         </div>
       ) : recs.length === 0 ? (
         <div className="text-center py-12">
-          <p className="text-muted">Nothing here.</p>
-          <p className="text-sm text-muted mt-1">Try different filters.</p>
+          <div className="text-5xl mb-4">🔍</div>
+          <p className="text-cream font-medium text-lg mb-1">Nothing matches</p>
+          <p className="text-muted text-sm">Try different filters or add a new pick.</p>
         </div>
       ) : (
         <div className="flex flex-col gap-3">

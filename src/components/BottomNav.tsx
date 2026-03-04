@@ -59,7 +59,7 @@ export default function BottomNav() {
             <Link
               key={item.href}
               href={item.href}
-              className="flex flex-col items-center justify-center gap-1 min-w-[64px] min-h-[48px] btn-press"
+              className="flex flex-col items-center justify-center gap-1 min-w-[64px] min-h-[52px] btn-press"
             >
               {item.icon(isActive)}
               <span

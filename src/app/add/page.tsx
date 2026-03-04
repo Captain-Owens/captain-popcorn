@@ -7,6 +7,7 @@ import { TMDBParsed, Platform } from '@/lib/types';
 import { STORAGE_KEY_MEMBER } from '@/lib/constants';
 import BottomNav from '@/components/BottomNav';
 import PlatformPicker from '@/components/PlatformPicker';
+import { useToast } from '@/components/Toast';
 
 export default function AddPage() {
   const router = useRouter();
@@ -21,6 +22,7 @@ export default function AddPage() {
   const [success, setSuccess] = useState(false);
   const debounceRef = useRef<NodeJS.Timeout>();
   const [manualTitle, setManualTitle] = useState('');
+  const { showToast } = useToast();
 
   useEffect(() => {
     const id = localStorage.getItem(STORAGE_KEY_MEMBER);
@@ -97,7 +99,7 @@ export default function AddPage() {
   const hasTitle = selected || manualTitle.trim().length > 0;
 
   return (
-    <div className="px-4 py-6 pb-24">
+    <div className="px-4 py-6 pb-24 page-enter">
       <h1 className="text-2xl font-bold mb-6">Add a pick</h1>
 
       {/* Success state */}

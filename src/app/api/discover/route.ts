@@ -1,110 +1,117 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
+import { TMDB_GENRES } from '@/lib/constants';
 
+const TMDB_API_KEY = process.env.TMDB_API_KEY;
 const TMDB_BASE = 'https://api.themoviedb.org/3';
-const TMDB_IMG = 'https://image.tmdb.org/t/p/w342';
 
-export async function GET(req: NextRequest) {
-  const apiKey = process.env.TMDB_API_KEY;
-  if (!apiKey) {
-    return NextResponse.json({ error: 'TMDB API key missing' }, { status: 500 });
-  }
-
-  // Get all recommendations to analyze group taste
-  const { data: recs } = await supabase
-    .from('recommendations')
-    .select('title, type, genre, tmdb_id, tmdb_rating');
-
-  if (!recs || recs.length < 5) {
-    return NextResponse.json([]);
-  }
-
-  // Analyze group taste: count genres and types
-  const genreCounts: Record<string, number> = {};
-  const typeCounts: Record<string, number> = { movie: 0, show: 0 };
-  const existingTmdbIds = new Set(recs.map(r => r.tmdb_id).filter(Boolean));
-
-  for (const rec of recs) {
-    typeCounts[rec.type] = (typeCounts[rec.type] || 0) + 1;
-    if (rec.genre) {
-      // Genre might be comma-separated
-      const genres = rec.genre.split(',').map((g: string) => g.trim());
-      for (const g of genres) {
-        if (g) genreCounts[g] = (genreCounts[g] || 0) + 1;
-      }
-    }
-  }
-
-  // Get top 3 genres
-  const topGenres = Object.entries(genreCounts)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 3)
-    .map(([g]) => g);
-
-  // Map genre names back to TMDB genre IDs
-  const genreIdMap: Record<string, number> = {
-    'Action': 28, 'Adventure': 12, 'Animation': 16, 'Comedy': 35,
-    'Crime': 80, 'Documentary': 99, 'Drama': 18, 'Family': 10751,
-    'Fantasy': 14, 'History': 36, 'Horror': 27, 'Music': 10402,
-    'Mystery': 9648, 'Romance': 10749, 'Sci-Fi': 878, 'Thriller': 53,
-    'War': 10752, 'Western': 37,
-  };
-
-  const topGenreIds = topGenres
-    .map(g => genreIdMap[g])
-    .filter(Boolean);
-
-  // Prefer the type the group watches more
-  const preferType = typeCounts.movie >= typeCounts.show ? 'movie' : 'tv';
-
-  // Fetch from TMDB discover endpoint - both movies and shows
-  const genreParam = topGenreIds.length > 0 ? `&with_genres=${topGenreIds.join(',')}` : '';
-  const movieUrl = `${TMDB_BASE}/discover/movie?api_key=${apiKey}&sort_by=vote_average.desc&vote_count.gte=50&vote_average.gte=7${genreParam}&page=1`;
-  const tvGenreIds = topGenres.map(g => ({
-    'Action': 10759, 'Adventure': 10759, 'Animation': 16, 'Comedy': 35,
-    'Crime': 80, 'Documentary': 99, 'Drama': 18, 'Family': 10751,
-    'Fantasy': 10765, 'Horror': 27, 'Mystery': 9648, 'Romance': 10749,
-    'Sci-Fi': 10765, 'Thriller': 53, 'War': 10768, 'Western': 37,
-  }[g])).filter(Boolean);
-  const tvGenreParam = tvGenreIds.length > 0 ? `&with_genres=${tvGenreIds.join(',')}` : '';
-  const tvUrl = `${TMDB_BASE}/discover/tv?api_key=${apiKey}&sort_by=vote_average.desc&vote_count.gte=50&vote_average.gte=7${tvGenreParam}&page=1`;
-
+export async function GET() {
   try {
-    const [movieRes, tvRes] = await Promise.all([fetch(movieUrl), fetch(tvUrl)]);
-    const movieData = await movieRes.json();
-    const tvData = await tvRes.json();
+    // Get all recommendations to analyze group taste
+    const { data: recs } = await supabase
+      .from('recommendations')
+      .select('*')
+      .not('tmdb_id', 'is', null);
 
-    const allResults = [
-      ...(movieData.results || []).map((r: any) => ({ ...r, _type: 'movie' })),
-      ...(tvData.results || []).map((r: any) => ({ ...r, _type: 'show' })),
-    ];
-
-    if (allResults.length === 0) {
+    if (!recs || recs.length < 5) {
       return NextResponse.json([]);
     }
 
-    // Shuffle so it's not all movies then all shows
-    for (let i = allResults.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [allResults[i], allResults[j]] = [allResults[j], allResults[i]];
+    // Analyze genres
+    const genreCounts: Record<string, number> = {};
+    let movieCount = 0;
+    let showCount = 0;
+
+    recs.forEach((rec) => {
+      if (rec.type === 'movie') movieCount++;
+      else showCount++;
+      if (rec.genre) {
+        rec.genre.split(', ').forEach((g: string) => {
+          genreCounts[g] = (genreCounts[g] || 0) + 1;
+        });
+      }
+    });
+
+    // Top 3 genres
+    const topGenres = Object.entries(genreCounts)
+      .sort(([, a], [, b]) => b - a)
+      .slice(0, 3)
+      .map(([g]) => g);
+
+    // Map genre names to TMDB IDs
+    const genreNameToId: Record<string, number> = {};
+    Object.entries(TMDB_GENRES).forEach(([id, name]) => {
+      genreNameToId[name] = parseInt(id);
+    });
+
+    const genreIds = topGenres
+      .map((g) => genreNameToId[g])
+      .filter(Boolean);
+
+    // Existing TMDB IDs to exclude
+    const existingIds = new Set(recs.map((r) => r.tmdb_id));
+
+    const results: any[] = [];
+
+    // Fetch movie suggestions
+    if (genreIds.length > 0) {
+      const movieUrl = `${TMDB_BASE}/discover/movie?api_key=${TMDB_API_KEY}&with_genres=${genreIds.join(',')}&sort_by=vote_average.desc&vote_count.gte=50&language=en-US&page=1`;
+      const movieRes = await fetch(movieUrl);
+      const movieData = await movieRes.json();
+
+      if (movieData.results) {
+        movieData.results.forEach((m: any) => {
+          if (!existingIds.has(m.id)) {
+            results.push({
+              id: m.id,
+              title: m.title,
+              poster_url: m.poster_path
+                ? `https://image.tmdb.org/t/p/w342${m.poster_path}`
+                : null,
+              year: m.release_date ? parseInt(m.release_date.slice(0, 4)) : null,
+              genre: m.genre_ids?.map((gid: number) => TMDB_GENRES[gid]).filter(Boolean).join(', ') || null,
+              tmdb_rating: m.vote_average ? Math.round(m.vote_average * 10) / 10 : null,
+              type: 'movie',
+              reason: `Based on your crew's love of ${topGenres.slice(0, 2).join(' and ')}`,
+            });
+          }
+        });
+      }
+
+      // Fetch TV suggestions
+      const tvUrl = `${TMDB_BASE}/discover/tv?api_key=${TMDB_API_KEY}&with_genres=${genreIds.join(',')}&sort_by=vote_average.desc&vote_count.gte=50&language=en-US&page=1`;
+      const tvRes = await fetch(tvUrl);
+      const tvData = await tvRes.json();
+
+      if (tvData.results) {
+        tvData.results.forEach((t: any) => {
+          if (!existingIds.has(t.id)) {
+            results.push({
+              id: t.id,
+              title: t.name,
+              poster_url: t.poster_path
+                ? `https://image.tmdb.org/t/p/w342${t.poster_path}`
+                : null,
+              year: t.first_air_date ? parseInt(t.first_air_date.slice(0, 4)) : null,
+              genre: t.genre_ids?.map((gid: number) => TMDB_GENRES[gid]).filter(Boolean).join(', ') || null,
+              tmdb_rating: t.vote_average ? Math.round(t.vote_average * 10) / 10 : null,
+              type: 'show',
+              reason: `Based on your crew's love of ${topGenres.slice(0, 2).join(' and ')}`,
+            });
+          }
+        });
+      }
     }
 
-    // Filter out anything already in the app
-    const suggestions = allResults
-      .filter((r: any) => !existingTmdbIds.has(r.id))
-      .slice(0, 10)
-      .map((r: any) => ({
-        tmdb_id: r.id,
-        title: r.title || r.name,
-        poster_url: r.poster_path ? `${TMDB_IMG}${r.poster_path}` : null,
-        year: (r.release_date || r.first_air_date || '').slice(0, 4) || null,
-        tmdb_rating: r.vote_average ? Math.round(r.vote_average * 10) / 10 : null,
-        type: r._type || 'movie',
-        reason: topGenres.length > 0 ? `Based on your group's love of ${topGenres[0]}` : 'Highly rated',
-      }));
+    // Shuffle and return top 8
+    for (let i = results.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [results[i], results[j]] = [results[j], results[i]];
+    }
 
-    return NextResponse.json(suggestions);
-  } catch {
+    return NextResponse.json(results.slice(0, 8));
+  } catch (error) {
+    console.error('Discover error:', error);
     return NextResponse.json([]);
   }
 }

@@ -6,32 +6,38 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Recommendation } from '@/lib/types';
 import { STORAGE_KEY_MEMBER, STORAGE_KEY_MEMBER_NAME } from '@/lib/constants';
 import { supabase } from '@/lib/supabase';
+import { useToast } from '@/components/Toast';
 import BottomNav from '@/components/BottomNav';
 import RecommendationCard from '@/components/RecommendationCard';
 import SkeletonCard from '@/components/SkeletonCard';
 import SlotMachine from '@/components/SlotMachine';
-import Logo from '@/components/Logo';
+import DiscoverCarousel from '@/components/DiscoverCarousel';
 
 interface DiscoverItem {
-  tmdb_id: number;
+  id: number;
   title: string;
   poster_url: string | null;
-  year: string | null;
+  year: number | null;
+  genre: string | null;
   tmdb_rating: number | null;
   type: 'movie' | 'show';
-  reason: string;
+  reason?: string;
 }
+
+const ITEMS_PER_PAGE = 5;
 
 export default function HomePage() {
   const router = useRouter();
+  const { showToast } = useToast();
   const [memberId, setMemberId] = useState<string | null>(null);
   const [memberName, setMemberName] = useState<string>('');
   const [feed, setFeed] = useState<Recommendation[]>([]);
   const [topRated, setTopRated] = useState<Recommendation | null>(null);
-  const [discovers, setDiscovers] = useState<DiscoverItem[]>([]);
-  const [discoverIdx, setDiscoverIdx] = useState(0);
   const [loading, setLoading] = useState(true);
   const [slotOpen, setSlotOpen] = useState(false);
+  const [discovers, setDiscovers] = useState<DiscoverItem[]>([]);
+  const [discoverLoading, setDiscoverLoading] = useState(true);
+  const [visibleCount, setVisibleCount] = useState(ITEMS_PER_PAGE);
 
   useEffect(() => {
     const id = localStorage.getItem(STORAGE_KEY_MEMBER);
@@ -48,56 +54,51 @@ export default function HomePage() {
     if (!memberId) return;
     setLoading(true);
 
-    const [feedRes, topRes, discoverRes] = await Promise.all([
+    const [feedRes, topRes] = await Promise.all([
       fetch(`/api/recommendations?exclude_watched_by=${memberId}&sort=newest&limit=20`),
       fetch(`/api/recommendations/top?exclude_watched_by=${memberId}`),
-      fetch('/api/discover'),
     ]);
 
     const feedData = await feedRes.json();
     const topData = await topRes.json();
-    const discoverData = await discoverRes.json();
 
     if (Array.isArray(feedData)) setFeed(feedData);
     if (topData) setTopRated(topData);
-    if (Array.isArray(discoverData) && discoverData.length > 0) {
-      setDiscovers(discoverData);
-      setDiscoverIdx(0);
-    }
 
     setLoading(false);
   }, [memberId]);
 
+  const fetchDiscover = useCallback(async () => {
+    setDiscoverLoading(true);
+    try {
+      const res = await fetch('/api/discover');
+      const data = await res.json();
+      if (Array.isArray(data)) setDiscovers(data);
+    } catch {
+      setDiscovers([]);
+    }
+    setDiscoverLoading(false);
+  }, []);
+
   useEffect(() => {
     fetchData();
-  }, [fetchData]);
+    fetchDiscover();
+  }, [fetchData, fetchDiscover]);
 
   useEffect(() => {
     if (!memberId) return;
-
     const channel = supabase
       .channel('home-feed')
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'recommendations' },
-        () => fetchData()
-      )
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'watched' },
-        () => fetchData()
-      )
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'recommendations' }, () => fetchData())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'watched' }, () => fetchData())
       .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    return () => { supabase.removeChannel(channel); };
   }, [memberId, fetchData]);
 
   async function handleWatch(recId: string) {
     if (!memberId) return;
     setFeed((prev) => prev.filter((r) => r.id !== recId));
-
+    showToast('Marked as watched', '✅');
     await fetch('/api/watched', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -107,6 +108,7 @@ export default function HomePage() {
 
   async function handleUnwatch(recId: string) {
     if (!memberId) return;
+    showToast('Removed from watched');
     await fetch('/api/watched', {
       method: 'DELETE',
       headers: { 'Content-Type': 'application/json' },
@@ -115,91 +117,73 @@ export default function HomePage() {
     fetchData();
   }
 
-  async function handleLike(recId: string) {
-    if (!memberId) return;
-    setFeed((prev) =>
-      prev.map((r) =>
-        r.id === recId
-          ? { ...r, is_liked: true, like_count: (r.like_count || 0) + 1 }
-          : r
-      )
-    );
-    await fetch('/api/like', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ member_id: memberId, recommendation_id: recId }),
-    });
-  }
+  const greeting = (() => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Good morning';
+    if (hour < 17) return 'Good afternoon';
+    return 'Good evening';
+  })();
 
-  async function handleUnlike(recId: string) {
-    if (!memberId) return;
-    setFeed((prev) =>
-      prev.map((r) =>
-        r.id === recId
-          ? { ...r, is_liked: false, like_count: Math.max(0, (r.like_count || 0) - 1) }
-          : r
-      )
-    );
-    await fetch('/api/like', {
-      method: 'DELETE',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ member_id: memberId, recommendation_id: recId }),
-    });
-  }
-
-  async function handleDelete(recId: string) {
-    if (!memberId) return;
-    setFeed((prev) => prev.filter((r) => r.id !== recId));
-    await fetch('/api/recommendations/delete', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ recommendation_id: recId, member_id: memberId }),
-    });
-  }
+  const visibleFeed = feed.slice(0, visibleCount);
+  const hasMore = feed.length > visibleCount;
 
   return (
-    <div className="px-4 py-6 pb-24">
+    <div className="px-4 py-6 pb-24 page-enter">
       {/* Header */}
       <div className="mb-6">
-        <div className="flex justify-center mb-4">
-          <Logo />
-        </div>
-        <h1 className="text-xl font-bold mb-1">Good evening {memberName}, whatcha feeling tonight?</h1>
+        <h1 className="text-xl font-bold">
+          {greeting} {memberName}, whatcha feeling tonight?
+        </h1>
         <button
           onClick={() => {
             localStorage.removeItem(STORAGE_KEY_MEMBER);
             localStorage.removeItem(STORAGE_KEY_MEMBER_NAME);
             router.replace('/pick');
           }}
-          className="text-sm text-cream/50 btn-press"
+          className="text-xs text-muted underline btn-press mt-1"
+          style={{ minHeight: 44, display: 'inline-flex', alignItems: 'center' }}
         >
           Switch user
         </button>
       </div>
 
-      {/* Row 1: Feeling Lucky - full width, big */}
+      {/* Feeling Lucky - big, glowing, distinct */}
       <button
         onClick={() => setSlotOpen(true)}
-        className="w-full bg-charcoal rounded-card p-8 flex flex-col items-center justify-center gap-3 min-h-[160px] btn-press border border-smoke hover:border-warm-gold transition-colors mb-3"
+        className="w-full rounded-card p-6 flex items-center justify-center gap-4 mb-4 btn-press lucky-glow"
+        style={{
+          minHeight: 100,
+          background: 'linear-gradient(135deg, #2A2A2A 0%, #1A1A1A 100%)',
+        }}
       >
-        <span className="text-5xl">🎰</span>
-        <span className="text-xl font-bold text-warm-gold">Feeling lucky?</span>
-        <span className="text-xs text-cream/50">Tap to spin</span>
+        <motion.div
+          className="text-5xl"
+          animate={{ rotate: [0, -5, 5, 0] }}
+          transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+        >
+          🎰
+        </motion.div>
+        <div className="text-left">
+          <span className="text-lg font-bold text-warm-gold">Feeling lucky?</span>
+          <p className="text-xs text-muted mt-0.5">Spin for a random pick</p>
+        </div>
       </button>
 
-      {/* Row 2: Top Pick + Discover */}
-      <div className="grid grid-cols-2 gap-3 mb-8">
+      {/* Top Pick + Discover row */}
+      <div className="grid grid-cols-2 gap-3 mb-6">
         {/* Top Pick */}
-        <div className="bg-charcoal rounded-card p-3 flex flex-col min-h-[180px] border border-smoke overflow-hidden">
-          <span className="text-xs text-cream/50 mb-2 font-medium">Top pick</span>
+        <div className="bg-charcoal rounded-card overflow-hidden border border-smoke card-elevated">
+          <div className="p-3">
+            <span className="text-xs text-muted font-medium">Top pick</span>
+          </div>
           {loading ? (
-            <div className="flex-1 flex flex-col gap-2">
-              <div className="skeleton flex-1 rounded-btn" />
-              <div className="skeleton h-3 w-3/4" />
+            <div className="px-3 pb-3">
+              <div className="skeleton h-[120px] w-full rounded-btn" />
+              <div className="skeleton h-3 w-3/4 mt-2" />
             </div>
           ) : topRated ? (
-            <div className="flex-1 flex flex-col">
-              <div className="flex-1 rounded-btn overflow-hidden bg-smoke mb-2">
+            <div>
+              <div className="h-[120px] overflow-hidden relative">
                 {topRated.poster_url ? (
                   <img
                     src={topRated.poster_url}
@@ -207,74 +191,83 @@ export default function HomePage() {
                     className="w-full h-full object-cover"
                   />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center text-muted text-sm">
-                    🍿
-                  </div>
+                  <div className="w-full h-full flex items-center justify-center text-muted text-sm bg-smoke">🍿</div>
+                )}
+                <div
+                  className="absolute inset-0"
+                  style={{
+                    background: 'linear-gradient(to top, rgba(42,42,42,1) 0%, transparent 60%)',
+                  }}
+                />
+              </div>
+              <div className="px-3 pb-3 -mt-6 relative">
+                <p className="text-xs font-bold text-cream truncate">{topRated.title}</p>
+                {topRated.tmdb_rating && (
+                  <p className="text-xs text-warm-gold mt-0.5">★ {topRated.tmdb_rating}</p>
                 )}
               </div>
-              <p className="text-xs font-medium text-cream truncate">
-                {topRated.title}
-              </p>
-              {topRated.like_count && topRated.like_count > 0 ? (
-                <p className="text-xs text-warm-gold">
-                  👍 {topRated.like_count}
-                </p>
-              ) : null}
             </div>
           ) : (
-            <p className="text-xs text-muted flex-1 flex items-center">
-              No picks yet.
-            </p>
+            <div className="px-3 pb-3">
+              <p className="text-xs text-muted">No picks yet.</p>
+            </div>
           )}
         </div>
 
-        {/* Discover - swipeable */}
-        <div className="bg-charcoal rounded-card p-3 flex flex-col min-h-[180px] border border-smoke overflow-hidden">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xs text-cream/50 font-medium">Discover</span>
-            {discovers.length > 1 && (
-              <span className="text-xs text-cream/30">{discoverIdx + 1}/{discovers.length}</span>
-            )}
+        {/* Discover mini card */}
+        <div className="bg-charcoal rounded-card overflow-hidden border border-smoke card-elevated">
+          <div className="p-3">
+            <span className="text-xs text-muted font-medium">Discover</span>
           </div>
-          {loading ? (
-            <div className="flex-1 flex flex-col gap-2">
-              <div className="skeleton flex-1 rounded-btn" />
-              <div className="skeleton h-3 w-3/4" />
+          {discoverLoading ? (
+            <div className="px-3 pb-3">
+              <div className="skeleton h-[120px] w-full rounded-btn" />
+              <div className="skeleton h-3 w-3/4 mt-2" />
             </div>
           ) : discovers.length > 0 ? (
-            <div
-              className="flex-1 flex flex-col cursor-pointer"
-              onClick={() => setDiscoverIdx((prev) => (prev + 1) % discovers.length)}
-            >
-              <div className="flex-1 rounded-btn overflow-hidden bg-smoke mb-2">
-                {discovers[discoverIdx].poster_url ? (
+            <div>
+              <div className="h-[120px] overflow-hidden relative">
+                {discovers[0].poster_url ? (
                   <img
-                    src={discovers[discoverIdx].poster_url}
-                    alt={discovers[discoverIdx].title}
+                    src={discovers[0].poster_url}
+                    alt={discovers[0].title}
                     className="w-full h-full object-cover"
                   />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center text-muted text-sm">
-                    🔮
-                  </div>
+                  <div className="w-full h-full flex items-center justify-center text-muted text-sm bg-smoke">🔭</div>
                 )}
+                <div
+                  className="absolute inset-0"
+                  style={{
+                    background: 'linear-gradient(to top, rgba(42,42,42,1) 0%, transparent 60%)',
+                  }}
+                />
               </div>
-              <p className="text-xs font-medium text-cream truncate">
-                {discovers[discoverIdx].title}
-              </p>
-              <p className="text-xs text-warm-gold truncate">
-                {discovers[discoverIdx].reason}
-              </p>
+              <div className="px-3 pb-3 -mt-6 relative">
+                <p className="text-xs font-bold text-cream truncate">{discovers[0].title}</p>
+                <p className="text-xs text-muted mt-0.5">{discovers.length} suggestions</p>
+              </div>
             </div>
           ) : (
-            <p className="text-xs text-muted flex-1 flex items-center">
-              Add more picks to unlock.
-            </p>
+            <div className="px-3 pb-3">
+              <p className="text-xs text-muted">Add more picks to unlock.</p>
+            </div>
           )}
         </div>
       </div>
 
-      {/* Recently added */}
+      {/* Discover carousel - full width */}
+      {discovers.length > 0 && (
+        <div className="mb-6">
+          <DiscoverCarousel
+            items={discovers}
+            loading={discoverLoading}
+            onRefresh={fetchDiscover}
+          />
+        </div>
+      )}
+
+      {/* Recent feed */}
       <h2 className="text-lg font-bold mb-4">Recently added</h2>
 
       {loading ? (
@@ -285,27 +278,42 @@ export default function HomePage() {
         </div>
       ) : feed.length === 0 ? (
         <div className="text-center py-12">
-          <div className="text-4xl mb-3">🍿</div>
-          <p className="text-cream/70">No recommendations yet.</p>
-          <p className="text-cream/50 text-sm">Be the first to add one.</p>
+          <div className="text-5xl mb-4">🍿</div>
+          <p className="text-cream font-medium text-lg mb-1">No recommendations yet</p>
+          <p className="text-muted text-sm mb-4">Be the first to add a pick for the crew.</p>
+          <button
+            onClick={() => router.push('/add')}
+            className="px-6 py-3 bg-warm-gold text-rich-black rounded-btn font-bold btn-press"
+            style={{ minHeight: 44 }}
+          >
+            Add a pick
+          </button>
         </div>
       ) : (
-        <div className="flex flex-col gap-3">
-          <AnimatePresence>
-            {feed.map((rec) => (
-              <RecommendationCard
-                key={rec.id}
-                rec={rec}
-                onWatch={handleWatch}
-                onUnwatch={handleUnwatch}
-                onLike={handleLike}
-                onUnlike={handleUnlike}
-                onDelete={handleDelete}
-                currentMemberId={memberId || undefined}
-              />
-            ))}
-          </AnimatePresence>
-        </div>
+        <>
+          <div className="flex flex-col gap-3">
+            <AnimatePresence>
+              {visibleFeed.map((rec) => (
+                <RecommendationCard
+                  key={rec.id}
+                  rec={rec}
+                  onWatch={handleWatch}
+                  onUnwatch={handleUnwatch}
+                />
+              ))}
+            </AnimatePresence>
+          </div>
+
+          {hasMore && (
+            <button
+              onClick={() => setVisibleCount((prev) => prev + ITEMS_PER_PAGE)}
+              className="w-full mt-4 py-3 text-sm text-muted font-medium btn-press rounded-btn border border-smoke hover:border-warm-gold transition-colors"
+              style={{ minHeight: 44 }}
+            >
+              Show more ({feed.length - visibleCount} remaining)
+            </button>
+          )}
+        </>
       )}
 
       <SlotMachine

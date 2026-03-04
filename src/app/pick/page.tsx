@@ -102,7 +102,7 @@ export default function PickPage() {
   }
 
   return (
-    <div className="px-4 py-8 min-h-dvh flex flex-col">
+    <div className="px-4 py-8 min-h-dvh flex flex-col page-enter">
       <div className="text-center mb-8">
 <Logo />
         <p className="text-cream/70">Who are you?</p>

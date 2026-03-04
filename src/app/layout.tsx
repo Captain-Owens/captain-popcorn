@@ -1,28 +1,16 @@
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
+import { ToastProvider } from '@/components/Toast';
 
 export const metadata: Metadata = {
   title: 'Captain Popcorn',
   description: 'What should we watch tonight?',
   manifest: '/manifest.json',
   icons: { icon: '/favicon.svg' },
-  metadataBase: new URL('https://captainpopcorn.com'),
-  openGraph: {
-    title: 'Captain Popcorn',
-    description: 'What should we watch tonight?',
-    url: 'https://captainpopcorn.com',
-    siteName: 'Captain Popcorn',
-    type: 'website',
-  },
-  twitter: {
-    card: 'summary_large_image',
-    title: 'Captain Popcorn',
-    description: 'What should we watch tonight?',
-  },
 };
 
 export const viewport: Viewport = {
-  themeColor: '#1C1410',
+  themeColor: '#1A1A1A',
   width: 'device-width',
   initialScale: 1,
   maximumScale: 1,
@@ -37,9 +25,11 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
-        <div className="max-w-[480px] mx-auto min-h-dvh relative">
-          {children}
-        </div>
+        <ToastProvider>
+          <div className="max-w-[480px] mx-auto min-h-dvh relative page-enter">
+            {children}
+          </div>
+        </ToastProvider>
       </body>
     </html>
   );
