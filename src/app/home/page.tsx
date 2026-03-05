@@ -31,6 +31,9 @@ export default function HomePage() {
   const [discoverItems, setDiscoverItems] = useState<any[]>([]);
   const [discoverLoading, setDiscoverLoading] = useState(true);
 
+  // Saved
+  const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
+
   // Comments
   const [commentsOpen, setCommentsOpen] = useState(false);
   const [commentsRecId, setCommentsRecId] = useState('');
@@ -52,9 +55,16 @@ export default function HomePage() {
     setLoading(true);
 
     try {
-      const res = await fetch(`/api/recommendations?exclude_watched_by=${memberId}&sort=newest&limit=30`);
+      const [res, savedRes] = await Promise.all([
+        fetch(`/api/recommendations?exclude_watched_by=${memberId}&sort=newest&limit=30`),
+        fetch(`/api/saved?member_id=${memberId}`),
+      ]);
       const data = await res.json();
+      const savedData = await savedRes.json();
       if (Array.isArray(data)) setFeed(data);
+      if (Array.isArray(savedData)) {
+        setSavedIds(new Set(savedData.map((s: any) => s.recommendation_id)));
+      }
     } catch {}
     setLoading(false);
   }, [memberId]);
@@ -105,6 +115,26 @@ export default function HomePage() {
       body: JSON.stringify({ member_id: memberId, recommendation_id: recId }),
     });
     fetchData();
+  }
+
+  async function handleSave(recId: string) {
+    if (!memberId) return;
+    setSavedIds((prev) => new Set(prev).add(recId));
+    await fetch('/api/saved', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ member_id: memberId, recommendation_id: recId }),
+    });
+  }
+
+  async function handleUnsave(recId: string) {
+    if (!memberId) return;
+    setSavedIds((prev) => { const next = new Set(prev); next.delete(recId); return next; });
+    await fetch('/api/saved', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ member_id: memberId, recommendation_id: recId }),
+    });
   }
 
   function handleOpenComments(recId: string, recTitle: string) {
@@ -198,6 +228,9 @@ export default function HomePage() {
                   onWatch={handleWatch}
                   onUnwatch={handleUnwatch}
                   onComment={handleOpenComments}
+                  onSave={handleSave}
+                  onUnsave={handleUnsave}
+                  isSaved={savedIds.has(rec.id)}
                 />
               ))}
             </AnimatePresence>

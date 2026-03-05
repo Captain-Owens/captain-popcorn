@@ -9,6 +9,9 @@ interface RecommendationCardProps {
   onWatch: (id: string) => void;
   onUnwatch?: (id: string) => void;
   onComment?: (recId: string, recTitle: string) => void;
+  onSave?: (recId: string) => void;
+  onUnsave?: (recId: string) => void;
+  isSaved?: boolean;
   showWatched?: boolean;
 }
 
@@ -17,6 +20,9 @@ export default function RecommendationCard({
   onWatch,
   onUnwatch,
   onComment,
+  onSave,
+  onUnsave,
+  isSaved = false,
   showWatched = false,
 }: RecommendationCardProps) {
   const platform = PLATFORMS.find((p) => p.slug === rec.platform);
@@ -29,7 +35,7 @@ export default function RecommendationCard({
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -8 }}
       transition={{ duration: 0.2 }}
-      className="flex gap-3 p-4 bg-charcoal rounded-card"
+      className="flex gap-3 p-4 bg-charcoal rounded-card relative"
     >
       {/* Poster */}
       <div className="w-20 h-28 flex-shrink-0 rounded-btn overflow-hidden bg-smoke">
@@ -49,7 +55,7 @@ export default function RecommendationCard({
 
       {/* Content */}
       <div className="flex-1 flex flex-col gap-1 min-w-0">
-        <h3 className="font-bold text-cream text-base leading-tight truncate">
+        <h3 className="font-bold text-cream text-base leading-tight truncate pr-8">
           {rec.title}
         </h3>
 
@@ -148,6 +154,29 @@ export default function RecommendationCard({
           </div>
         </div>
       </div>
+
+      {/* Bookmark icon - bottom right */}
+      {(onSave || onUnsave) && (
+        <button
+          onClick={() => isSaved ? onUnsave?.(rec.id) : onSave?.(rec.id)}
+          className="absolute bottom-3 right-3 p-2 btn-press"
+          style={{ WebkitTapHighlightColor: 'transparent' }}
+          title={isSaved ? 'Remove from saved' : 'Save for later'}
+        >
+          <svg
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill={isSaved ? '#E8A317' : 'none'}
+            stroke={isSaved ? '#E8A317' : '#8A8A7A'}
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
+          </svg>
+        </button>
+      )}
     </motion.div>
   );
 }

@@ -11,7 +11,6 @@ import SkeletonCard from '@/components/SkeletonCard';
 import SearchOverlay from '@/components/SearchOverlay';
 import CommentsSheet from '@/components/CommentsSheet';
 
-// Genre definitions with TMDB genre string matching
 const GENRES = [
   { label: 'All', match: null },
   { label: 'Action', match: ['Action'] },
@@ -52,10 +51,15 @@ export default function BrowsePage() {
   const [searchOpen, setSearchOpen] = useState(false);
 
   // Tabs
-  const [activeTab, setActiveTab] = useState<'browse' | 'watched'>('browse');
+  const [activeTab, setActiveTab] = useState<'browse' | 'watched' | 'saved'>('browse');
   const [watchedMembers, setWatchedMembers] = useState<WatchedMember[]>([]);
   const [watchedLoading, setWatchedLoading] = useState(false);
   const [expandedMember, setExpandedMember] = useState<string | null>(null);
+  const [savedRecs, setSavedRecs] = useState<Recommendation[]>([]);
+  const [savedLoading, setSavedLoading] = useState(false);
+
+  // Saved IDs for bookmark state
+  const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
 
   // Filters
   const [typeFilter, setTypeFilter] = useState<'all' | 'movie' | 'show'>('all');
@@ -107,19 +111,24 @@ export default function BrowsePage() {
     if (memberFilter) params.set('member_id', memberFilter);
 
     try {
-      const [recsRes, membersRes, allRes] = await Promise.all([
+      const [recsRes, membersRes, allRes, savedRes] = await Promise.all([
         fetch(`/api/recommendations?${params.toString()}`),
         fetch('/api/members'),
-        fetch(`/api/recommendations?limit=200`),
+        fetch('/api/recommendations?limit=200'),
+        fetch(`/api/saved?member_id=${memberId}`),
       ]);
 
       const recsData = await recsRes.json();
       const membersData = await membersRes.json();
       const allData = await allRes.json();
+      const savedData = await savedRes.json();
 
       if (Array.isArray(recsData)) setRecs(recsData);
       if (Array.isArray(membersData)) setMembers(membersData);
       if (Array.isArray(allData)) setAllRecs(allData);
+      if (Array.isArray(savedData)) {
+        setSavedIds(new Set(savedData.map((s: any) => s.recommendation_id)));
+      }
     } catch {}
 
     setLoading(false);
@@ -142,6 +151,20 @@ export default function BrowsePage() {
         .catch(() => setWatchedLoading(false));
     }
   }, [activeTab]);
+
+  // Fetch saved list
+  useEffect(() => {
+    if (activeTab === 'saved' && memberId) {
+      setSavedLoading(true);
+      fetch(`/api/saved/list?member_id=${memberId}`)
+        .then((r) => r.json())
+        .then((data) => {
+          if (Array.isArray(data)) setSavedRecs(data);
+          setSavedLoading(false);
+        })
+        .catch(() => setSavedLoading(false));
+    }
+  }, [activeTab, memberId]);
 
   // Person search debounce
   useEffect(() => {
@@ -166,6 +189,7 @@ export default function BrowsePage() {
   async function handleWatch(recId: string) {
     if (!memberId) return;
     setRecs((prev) => prev.filter((r) => r.id !== recId));
+    setSavedRecs((prev) => prev.filter((r) => r.id !== recId));
     await fetch('/api/watched', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -181,6 +205,31 @@ export default function BrowsePage() {
       body: JSON.stringify({ member_id: memberId, recommendation_id: recId }),
     });
     fetchData();
+  }
+
+  async function handleSave(recId: string) {
+    if (!memberId) return;
+    setSavedIds((prev) => new Set(prev).add(recId));
+    await fetch('/api/saved', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ member_id: memberId, recommendation_id: recId }),
+    });
+  }
+
+  async function handleUnsave(recId: string) {
+    if (!memberId) return;
+    setSavedIds((prev) => {
+      const next = new Set(prev);
+      next.delete(recId);
+      return next;
+    });
+    setSavedRecs((prev) => prev.filter((r) => r.id !== recId));
+    await fetch('/api/saved', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ member_id: memberId, recommendation_id: recId }),
+    });
   }
 
   function handleOpenComments(recId: string, recTitle: string) {
@@ -202,9 +251,8 @@ export default function BrowsePage() {
     setPersonResults([]);
   }
 
-  // Apply genre + person filters to recs
+  // Apply genre + person filters
   const filteredRecs = recs.filter((rec) => {
-    // Genre filter
     if (genreFilter !== 'All') {
       const genreDef = GENRES.find((g) => g.label === genreFilter);
       if (genreDef && genreDef.match) {
@@ -213,12 +261,9 @@ export default function BrowsePage() {
         if (!matches) return false;
       }
     }
-
-    // Person filter (actor/director)
     if (matchingTmdbIds && activePersonName) {
       if (!rec.tmdb_id || !matchingTmdbIds.includes(rec.tmdb_id)) return false;
     }
-
     return true;
   });
 
@@ -238,28 +283,21 @@ export default function BrowsePage() {
         </button>
       </div>
 
-      {/* Browse / Watched tabs */}
+      {/* Browse / Watched / Saved tabs */}
       <div className="flex gap-2 mb-4">
-        <button
-          onClick={() => setActiveTab('browse')}
-          className="px-4 py-2 rounded-btn text-sm font-medium btn-press min-h-[40px]"
-          style={{
-            backgroundColor: activeTab === 'browse' ? '#E8A317' : '#2A2A2A',
-            color: activeTab === 'browse' ? '#1A1A1A' : '#8A8A7A',
-          }}
-        >
-          Browse
-        </button>
-        <button
-          onClick={() => setActiveTab('watched')}
-          className="px-4 py-2 rounded-btn text-sm font-medium btn-press min-h-[40px]"
-          style={{
-            backgroundColor: activeTab === 'watched' ? '#E8A317' : '#2A2A2A',
-            color: activeTab === 'watched' ? '#1A1A1A' : '#8A8A7A',
-          }}
-        >
-          Watched
-        </button>
+        {(['browse', 'watched', 'saved'] as const).map((tab) => (
+          <button
+            key={tab}
+            onClick={() => setActiveTab(tab)}
+            className="px-4 py-2 rounded-btn text-sm font-medium btn-press min-h-[40px]"
+            style={{
+              backgroundColor: activeTab === tab ? '#E8A317' : '#2A2A2A',
+              color: activeTab === tab ? '#1A1A1A' : '#8A8A7A',
+            }}
+          >
+            {tab === 'browse' ? 'Browse' : tab === 'watched' ? 'Watched' : 'Saved'}
+          </button>
+        ))}
       </div>
 
       {activeTab === 'browse' ? (
@@ -281,7 +319,7 @@ export default function BrowsePage() {
             ))}
           </div>
 
-          {/* Genre filter - horizontal scroll */}
+          {/* Genre filter */}
           <div
             className="flex gap-2 mb-3 overflow-x-auto pb-1"
             style={{ WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none', msOverflowStyle: 'none' }}
@@ -316,7 +354,6 @@ export default function BrowsePage() {
                 </option>
               ))}
             </select>
-
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
@@ -337,10 +374,7 @@ export default function BrowsePage() {
                   <circle cx="12" cy="7" r="4" />
                 </svg>
                 <span className="text-sm text-cream flex-1">{activePersonName}</span>
-                <button
-                  onClick={clearPersonFilter}
-                  className="text-muted hover:text-cream btn-press p-1"
-                >
+                <button onClick={clearPersonFilter} className="text-muted hover:text-cream btn-press p-1">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                     <line x1="18" y1="6" x2="6" y2="18" />
                     <line x1="6" y1="6" x2="18" y2="18" />
@@ -350,17 +384,7 @@ export default function BrowsePage() {
             ) : (
               <>
                 <div className="relative">
-                  <svg
-                    width="16"
-                    height="16"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="#8A8A7A"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    className="absolute left-3 top-1/2 -translate-y-1/2"
-                  >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8A8A7A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="absolute left-3 top-1/2 -translate-y-1/2">
                     <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
                     <circle cx="12" cy="7" r="4" />
                   </svg>
@@ -372,12 +396,8 @@ export default function BrowsePage() {
                     className="w-full bg-charcoal border border-smoke rounded-btn pl-10 pr-3 py-2 text-sm text-cream min-h-[40px] placeholder-muted"
                     style={{ outline: 'none' }}
                   />
-                  {personSearching && (
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted">...</span>
-                  )}
+                  {personSearching && <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted">...</span>}
                 </div>
-
-                {/* Person search results dropdown */}
                 {personResults.length > 0 && personQuery.length >= 2 && (
                   <div className="absolute left-0 right-0 mt-1 bg-charcoal border border-smoke rounded-card overflow-hidden z-20 shadow-lg">
                     {personResults.map((p) => {
@@ -392,20 +412,14 @@ export default function BrowsePage() {
                             {p.profile_url ? (
                               <img src={p.profile_url} alt={p.name} className="w-full h-full object-cover" />
                             ) : (
-                              <div className="w-full h-full flex items-center justify-center text-xs text-muted">
-                                {p.name.charAt(0)}
-                              </div>
+                              <div className="w-full h-full flex items-center justify-center text-xs text-muted">{p.name.charAt(0)}</div>
                             )}
                           </div>
                           <div className="min-w-0 flex-1">
                             <p className="text-sm font-medium text-cream truncate">{p.name}</p>
                             <p className="text-xs text-muted">{p.known_for}</p>
                           </div>
-                          {hasMatches && (
-                            <span className="text-xs text-warm-gold flex-shrink-0">
-                              In your list
-                            </span>
-                          )}
+                          {hasMatches && <span className="text-xs text-warm-gold flex-shrink-0">In your list</span>}
                         </button>
                       );
                     })}
@@ -418,17 +432,11 @@ export default function BrowsePage() {
           {/* Results */}
           {loading ? (
             <div className="flex flex-col gap-3">
-              {[1, 2, 3, 4].map((i) => (
-                <SkeletonCard key={i} />
-              ))}
+              {[1, 2, 3, 4].map((i) => <SkeletonCard key={i} />)}
             </div>
           ) : filteredRecs.length === 0 ? (
             <div className="text-center py-12">
-              <p className="text-muted">
-                {genreFilter !== 'All' || activePersonName
-                  ? 'No matches for these filters.'
-                  : 'Nothing here.'}
-              </p>
+              <p className="text-muted">{genreFilter !== 'All' || activePersonName ? 'No matches for these filters.' : 'Nothing here.'}</p>
               <p className="text-sm text-muted mt-1">Try different filters.</p>
             </div>
           ) : (
@@ -442,12 +450,48 @@ export default function BrowsePage() {
                     onWatch={handleWatch}
                     onUnwatch={handleUnwatch}
                     onComment={handleOpenComments}
+                    onSave={handleSave}
+                    onUnsave={handleUnsave}
+                    isSaved={savedIds.has(rec.id)}
                   />
                 ))}
               </AnimatePresence>
             </div>
           )}
         </>
+      ) : activeTab === 'saved' ? (
+        /* Saved tab */
+        <div>
+          {savedLoading ? (
+            <div className="flex flex-col gap-3">
+              {[1, 2, 3].map((i) => <SkeletonCard key={i} />)}
+            </div>
+          ) : savedRecs.length === 0 ? (
+            <div className="text-center py-12">
+              <div className="text-4xl mb-3">🔖</div>
+              <p className="text-muted">No saved titles yet.</p>
+              <p className="text-sm text-muted mt-1">Tap the bookmark icon on any title to save it for later.</p>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-3">
+              <p className="text-xs text-muted">{savedRecs.length} saved</p>
+              <AnimatePresence>
+                {savedRecs.map((rec) => (
+                  <RecommendationCard
+                    key={rec.id}
+                    rec={rec}
+                    onWatch={handleWatch}
+                    onUnwatch={handleUnwatch}
+                    onComment={handleOpenComments}
+                    onSave={handleSave}
+                    onUnsave={handleUnsave}
+                    isSaved={true}
+                  />
+                ))}
+              </AnimatePresence>
+            </div>
+          )}
+        </div>
       ) : (
         /* Watched tab */
         <div>
@@ -472,30 +516,14 @@ export default function BrowsePage() {
                     onClick={() => setExpandedMember(expandedMember === wm.id ? null : wm.id)}
                     className="w-full flex items-center gap-3 p-4 text-left btn-press"
                   >
-                    <div
-                      className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0"
-                      style={{ backgroundColor: '#3A3A3A', color: '#E8A317' }}
-                    >
+                    <div className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0" style={{ backgroundColor: '#3A3A3A', color: '#E8A317' }}>
                       {wm.name?.charAt(0)?.toUpperCase() || '?'}
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="font-medium text-cream">{wm.name || 'Unknown'}</p>
                       <p className="text-xs text-muted">{wm.watched_count || 0} watched</p>
                     </div>
-                    <svg
-                      width="16"
-                      height="16"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="#8A8A7A"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      style={{
-                        transform: expandedMember === wm.id ? 'rotate(180deg)' : 'rotate(0deg)',
-                        transition: 'transform 0.2s',
-                      }}
-                    >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8A8A7A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ transform: expandedMember === wm.id ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}>
                       <polyline points="6 9 12 15 18 9" />
                     </svg>
                   </button>
@@ -513,9 +541,7 @@ export default function BrowsePage() {
                             </div>
                             <div className="min-w-0 flex-1">
                               <p className="text-sm text-cream truncate">{item.title || 'Unknown'}</p>
-                              <p className="text-xs text-muted">
-                                {item.year || ''}{item.tmdb_rating ? ` · ${item.tmdb_rating}/10` : ''}
-                              </p>
+                              <p className="text-xs text-muted">{item.year || ''}{item.tmdb_rating ? ` · ${item.tmdb_rating}/10` : ''}</p>
                             </div>
                           </div>
                         ))}
