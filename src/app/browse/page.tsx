@@ -462,12 +462,8 @@ export default function BrowsePage() {
                     onUnwatch={handleUnwatch}
                     onComment={handleOpenComments}
                     onSave={handleSave}
-                  onDelete={handleDelete}
-                  isAdmin={isAdmin}
-                  onDelete={handleDelete}
-                  isAdmin={isAdmin}
-                  onDelete={handleDelete}
-                  isAdmin={isAdmin}
+                    onDelete={handleDelete}
+                    isAdmin={isAdmin}
                     onUnsave={handleUnsave}
                     isSaved={savedIds.has(rec.id)}
                   />
