@@ -125,7 +125,7 @@ export async function POST(req: NextRequest) {
       .eq('tmdb_id', Number(tmdb_id))
       .limit(1);
     if (existing && existing.length > 0) {
-      return NextResponse.json(existing[0], { status: 200 }); // existing rec, no duplicate
+      return NextResponse.json(existing[0], { status: 200 }); // existing rec, no duplicate // existing rec, no duplicate
     }
   }
 

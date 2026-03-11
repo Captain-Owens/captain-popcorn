@@ -240,7 +240,7 @@ export default function BrowsePage() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id: recId }),
     });
-    fetchData(false);
+    fetchData();
   }
 
   function handleOpenComments(recId: string, recTitle: string) {
