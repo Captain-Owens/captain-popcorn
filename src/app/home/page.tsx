@@ -33,6 +33,7 @@ export default function HomePage() {
 
   // Saved
   const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
+  const [savedTmdbIds, setSavedTmdbIds] = useState<Set<number>>(new Set());
 
   // Comments
   const [commentsOpen, setCommentsOpen] = useState(false);
@@ -137,6 +138,54 @@ export default function HomePage() {
     });
   }
 
+
+  async function handleSaveDiscover(item: { id: number; title: string; poster_url: string; year: string; genre: string; tmdb_rating: number; type: string; overview: string }) {
+    if (!memberId) return;
+    // Step 1: Add to crew recommendations
+    const recRes = await fetch('/api/recommendations', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        tmdb_id: item.id,
+        title: item.title,
+        poster_url: item.poster_url,
+        year: item.year,
+        genre: item.genre,
+        tmdb_rating: item.tmdb_rating,
+        type: item.type,
+        overview: item.overview,
+        recommended_by: memberId,
+      }),
+    });
+    let recId: string | null = null;
+    if (recRes.ok) {
+      const d = await recRes.json();
+      recId = d?.id || d?.data?.id || d?.[0]?.id || null;
+    }
+    // If duplicate, look it up
+    if (!recId) {
+      const lookupRes = await fetch('/api/recommendations');
+      if (lookupRes.ok) {
+        const all = await lookupRes.json();
+        const recs = Array.isArray(all) ? all : all?.data || [];
+        const match = recs.find((r: any) => r.tmdb_id === item.id);
+        if (match) recId = match.id;
+      }
+    }
+    if (recId) {
+      // Step 2: Save to personal list (same as handleSave)
+      setSavedIds(prev => new Set(prev).add(recId as string));
+      setSavedTmdbIds(prev => { const s = new Set(prev); s.add(item.id); return s; });
+      await fetch('/api/saved', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ member_id: memberId, recommendation_id: recId }),
+      });
+      // Refresh data silently to pick up new rec
+      fetchData(false);
+    }
+  }
+
   function handleOpenComments(recId: string, recTitle: string) {
     setCommentsRecId(recId);
     setCommentsRecTitle(recTitle);
@@ -162,6 +211,17 @@ export default function HomePage() {
       document.body.style.overscrollBehavior = '';
     };
   }, []);
+
+  // Sync savedTmdbIds from savedIds + recommendations
+  useEffect(() => {
+    if (recs.length > 0 && savedIds.size > 0) {
+      const tmdbSet = new Set<number>();
+      recs.forEach((r: any) => {
+        if (savedIds.has(r.id) && r.tmdb_id) tmdbSet.add(Number(r.tmdb_id));
+      });
+      setSavedTmdbIds(tmdbSet);
+    }
+  }, [recs, savedIds]);
 
   return (
     <div className="px-4 py-6 pb-24">
@@ -208,7 +268,7 @@ export default function HomePage() {
       {memberId && (
         <div className="mb-6">
           <h2 className="text-lg font-bold mb-3">Discover</h2>
-          <DiscoverCarousel items={discoverItems} loading={discoverLoading} />
+          <DiscoverCarousel items={discoverItems} loading={discoverLoading} savedTmdbIds={savedTmdbIds} onSaveItem={handleSaveDiscover} />
         </div>
       )}
 
