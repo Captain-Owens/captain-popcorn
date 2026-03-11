@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { STORAGE_KEY_MEMBER } from '@/lib/constants';
 
@@ -26,6 +26,24 @@ export default function DiscoverCarousel({ items, loading }: DiscoverCarouselPro
   const [saving, setSaving] = useState(false);
   const [savedIds, setSavedIds] = useState<Set<number>>(new Set());
   const constraintsRef = useRef<HTMLDivElement>(null);
+
+  // Lock body scroll when detail popup is open (prevents iOS scroll passthrough)
+  useEffect(() => {
+    if (selectedItem) {
+      const scrollY = window.scrollY;
+      document.body.style.overflow = 'hidden';
+      document.body.style.position = 'fixed';
+      document.body.style.width = '100%';
+      document.body.style.top = `-${scrollY}px`;
+    } else {
+      const scrollY = document.body.style.top;
+      document.body.style.overflow = '';
+      document.body.style.position = '';
+      document.body.style.width = '';
+      document.body.style.top = '';
+      window.scrollTo(0, parseInt(scrollY || '0') * -1);
+    }
+  }, [selectedItem]);
 
   const CARD_WIDTH = 240;
   const CARD_GAP = 12;
@@ -185,6 +203,7 @@ export default function DiscoverCarousel({ items, loading }: DiscoverCarouselPro
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-50 flex items-end justify-center bg-rich-black/80"
+            style={{ touchAction: 'none' }}
             onClick={(e) => { if (e.target === e.currentTarget) setSelectedItem(null); }}
           >
             <motion.div
@@ -193,6 +212,7 @@ export default function DiscoverCarousel({ items, loading }: DiscoverCarouselPro
               exit={{ y: '100%' }}
               transition={{ type: 'spring', damping: 25, stiffness: 300 }}
               className="w-full max-w-[480px] bg-charcoal rounded-t-2xl flex flex-col"
+              onClick={(e) => e.stopPropagation()}
               style={{ maxHeight: '85vh' }}
             >
               {/* Drag handle */}
@@ -201,7 +221,7 @@ export default function DiscoverCarousel({ items, loading }: DiscoverCarouselPro
               </div>
 
               {/* Scrollable content */}
-              <div className="px-5 overflow-y-auto flex-1" style={{ WebkitOverflowScrolling: 'touch' as any }}>
+              <div className="px-5 overflow-y-auto flex-1" style={{ WebkitOverflowScrolling: 'touch' as any, overscrollBehavior: 'contain' }}>
                 <div className="flex gap-4 mb-4">
                   <div className="w-28 h-40 flex-shrink-0 rounded-btn overflow-hidden bg-smoke">
                     {selectedItem.poster_url ? (
