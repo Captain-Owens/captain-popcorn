@@ -221,7 +221,7 @@ export default function HomePage() {
       });
       setSavedTmdbIds(tmdbSet);
     }
-  }, [recs, savedIds]);
+  }, [feed, savedIds]);
 
   return (
     <div className="px-4 py-6 pb-24">
