@@ -19,9 +19,10 @@ interface DiscoverCarouselProps {
   loading: boolean;
   savedTmdbIds?: Set<number>;
   onSaveItem?: (item: DiscoverItem) => Promise<void>;
+  onUnsaveItem?: (tmdbId: number) => Promise<void>;
 }
 
-export default function DiscoverCarousel({ items, loading, savedTmdbIds, onSaveItem }: DiscoverCarouselProps) {
+export default function DiscoverCarousel({ items, loading, savedTmdbIds, onSaveItem, onUnsaveItem }: DiscoverCarouselProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const touchStartX = useRef(0);
   const touchStartY = useRef(0);
@@ -60,11 +61,12 @@ export default function DiscoverCarousel({ items, loading, savedTmdbIds, onSaveI
     isDragging.current = false;
   };
 
-  const handleSave = (item: DiscoverItem) => {
-    if (savedTmdbIds?.has(item.id)) return;
-    if (!onSaveItem) return;
-    // Fire and forget - parent handles optimistic state
-    onSaveItem(item);
+  const handleToggleSave = (item: DiscoverItem) => {
+    if (savedTmdbIds?.has(item.id)) {
+      if (onUnsaveItem) onUnsaveItem(item.id);
+    } else {
+      if (onSaveItem) onSaveItem(item);
+    }
   };
 
   if (loading) {
@@ -118,7 +120,7 @@ export default function DiscoverCarousel({ items, loading, savedTmdbIds, onSaveI
 
                     {/* BOOKMARK */}
                     <button
-                      onClick={() => handleSave(item)}
+                      onClick={() => handleToggleSave(item)}
                       style={{
                         position: 'absolute', top: 12, right: 12, width: 44, height: 44,
                         borderRadius: 22, border: isSaved ? '2px solid #DAA520' : '2px solid rgba(255,255,255,0.3)',

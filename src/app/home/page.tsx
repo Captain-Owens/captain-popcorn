@@ -92,7 +92,6 @@ export default function HomePage() {
     if (!memberId) return;
     const channel = supabase
       .channel('home-feed')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'recommendations' }, () => fetchData(false))
       .on('postgres_changes', { event: '*', schema: 'public', table: 'watched' }, () => {})
       .subscribe();
     return () => { supabase.removeChannel(channel); };
@@ -139,7 +138,29 @@ export default function HomePage() {
   }
 
 
-  async function handleSaveDiscover(item: { id: number; title: string; poster_url: string; year: string; genre: string; tmdb_rating: number; type: string; overview: string }) {
+  async function handleSaveDiscover(item: { id: number; title: string; poster_url: string; year: string; genre: string; tmdb_rating: number; type: string; overview: string }
+  async function handleUnsaveDiscover(tmdbId: number) {
+    // Optimistic: turn gray immediately
+    setSavedTmdbIds(prev => { const s = new Set(prev); s.delete(tmdbId); return s; });
+
+    try {
+      // Find the recommendation by tmdb_id
+      const match = feed.find((r: any) => Number(r.tmdb_id) === tmdbId);
+      if (match) {
+        setSavedIds(prev => { const s = new Set(prev); s.delete(match.id); return s; });
+        await fetch('/api/saved', {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ member_id: memberId, recommendation_id: match.id }),
+        });
+      }
+    } catch (err) {
+      // Revert on failure
+      setSavedTmdbIds(prev => { const s = new Set(prev); s.add(tmdbId); return s; });
+      console.error('Unsave failed:', err);
+    }
+  }
+) {
     if (!memberId) return;
     // Optimistic: turn yellow immediately
     setSavedTmdbIds(prev => { const s = new Set(prev); s.add(item.id); return s; });
@@ -264,7 +285,7 @@ export default function HomePage() {
       {memberId && (
         <div className="mb-6">
           <h2 className="text-lg font-bold mb-3">Discover</h2>
-          <DiscoverCarousel items={discoverItems} loading={discoverLoading} savedTmdbIds={savedTmdbIds} onSaveItem={handleSaveDiscover} />
+          <DiscoverCarousel items={discoverItems} loading={discoverLoading} savedTmdbIds={savedTmdbIds} onSaveItem={handleSaveDiscover} onUnsaveItem={handleUnsaveDiscover} />
         </div>
       )}
 
