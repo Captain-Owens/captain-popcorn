@@ -1,18 +1,17 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { STORAGE_KEY_MEMBER } from '@/lib/constants';
+import { useState, useRef, useCallback } from 'react';
+import Image from 'next/image';
 
 interface DiscoverItem {
   id: number;
   title: string;
-  poster_url: string | null;
-  year: number | null;
-  genre: string | null;
-  tmdb_rating: number | null;
-  overview: string | null;
-  type: 'movie' | 'show';
+  poster_url: string;
+  year: string;
+  genre: string;
+  tmdb_rating: number;
+  type: string;
+  overview: string;
 }
 
 interface DiscoverCarouselProps {
@@ -22,275 +21,369 @@ interface DiscoverCarouselProps {
 
 export default function DiscoverCarousel({ items, loading }: DiscoverCarouselProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [selectedItem, setSelectedItem] = useState<DiscoverItem | null>(null);
-  const [saving, setSaving] = useState(false);
+  const [savingIds, setSavingIds] = useState<Set<number>>(new Set());
   const [savedIds, setSavedIds] = useState<Set<number>>(new Set());
-  const constraintsRef = useRef<HTMLDivElement>(null);
+  const touchStartX = useRef(0);
+  const touchStartY = useRef(0);
+  const touchDelta = useRef(0);
+  const isDragging = useRef(false);
+  const containerRef = useRef<HTMLDivElement>(null);
 
-  // Lock body scroll when detail popup is open (prevents iOS scroll passthrough)
-  useEffect(() => {
-    if (selectedItem) {
-      const scrollY = window.scrollY;
-      document.body.style.overflow = 'hidden';
-      document.body.style.position = 'fixed';
-      document.body.style.width = '100%';
-      document.body.style.top = `-${scrollY}px`;
-    } else {
-      const scrollY = document.body.style.top;
-      document.body.style.overflow = '';
-      document.body.style.position = '';
-      document.body.style.width = '';
-      document.body.style.top = '';
-      window.scrollTo(0, parseInt(scrollY || '0') * -1);
+  const goTo = useCallback((index: number) => {
+    const clamped = Math.max(0, Math.min(index, items.length - 1));
+    setCurrentIndex(clamped);
+  }, [items.length]);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+    touchStartY.current = e.touches[0].clientY;
+    touchDelta.current = 0;
+    isDragging.current = false;
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    const dx = e.touches[0].clientX - touchStartX.current;
+    const dy = e.touches[0].clientY - touchStartY.current;
+
+    // If horizontal movement is dominant, we're swiping the carousel
+    if (!isDragging.current && Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 10) {
+      isDragging.current = true;
     }
-  }, [selectedItem]);
 
-  const CARD_WIDTH = 240;
-  const CARD_GAP = 12;
-
-  function handleDragEnd(_: any, info: { offset: { x: number }; velocity: { x: number } }) {
-    const swipe = info.offset.x + info.velocity.x * 0.5;
-    if (swipe < -50 && currentIndex < items.length - 1) {
-      setCurrentIndex((i) => i + 1);
-    } else if (swipe > 50 && currentIndex > 0) {
-      setCurrentIndex((i) => i - 1);
+    if (isDragging.current) {
+      e.preventDefault();
+      touchDelta.current = dx;
     }
-  }
+  };
 
-  async function handleSaveItem(item: DiscoverItem) {
-    const memberId = localStorage.getItem(STORAGE_KEY_MEMBER);
-    if (!memberId || saving) return;
+  const handleTouchEnd = () => {
+    if (isDragging.current) {
+      const threshold = 50;
+      if (touchDelta.current < -threshold) {
+        goTo(currentIndex + 1);
+      } else if (touchDelta.current > threshold) {
+        goTo(currentIndex - 1);
+      }
+    }
+    touchDelta.current = 0;
+    isDragging.current = false;
+  };
 
-    setSaving(true);
+  const handleSave = async (item: DiscoverItem) => {
+    if (savingIds.has(item.id)) return;
+
+    const memberId = typeof window !== 'undefined' ? localStorage.getItem('selectedMemberId') : null;
+    if (!memberId) return;
+
+    setSavingIds(prev => {
+      const next = new Set(prev);
+      next.add(item.id);
+      return next;
+    });
+
     try {
-      // 1. Add to crew recommendations
-      const addRes = await fetch('/api/recommendations', {
+      // First add to crew recommendations
+      const recRes = await fetch('/api/recommendations', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          member_id: memberId,
-          title: item.title,
-          type: item.type || 'movie',
           tmdb_id: item.id,
+          title: item.title,
           poster_url: item.poster_url,
           year: item.year,
           genre: item.genre,
           tmdb_rating: item.tmdb_rating,
-          platform: null,
-          rating: null,
-          comment: null,
+          type: item.type,
+          overview: item.overview,
+          recommended_by: memberId,
         }),
       });
+      const recData = await recRes.json();
+      const recId = recData?.id || recData?.data?.id;
 
-      if (addRes.ok) {
-        const rec = await addRes.json();
-        // 2. Save/bookmark it
+      if (recId) {
+        // Then save to personal list
         await fetch('/api/saved', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             member_id: memberId,
-            recommendation_id: rec.id,
+            recommendation_id: recId,
           }),
         });
-        setSavedIds((prev) => new Set(prev).add(item.id));
       }
-    } catch {}
-    setSaving(false);
-  }
+
+      setSavedIds(prev => {
+        const next = new Set(prev);
+        next.add(item.id);
+        return next;
+      });
+    } catch (err) {
+      console.error('Save failed:', err);
+    } finally {
+      setSavingIds(prev => {
+        const next = new Set(prev);
+        next.delete(item.id);
+        return next;
+      });
+    }
+  };
 
   if (loading) {
     return (
-      <div className="flex gap-3 overflow-hidden">
-        {[1, 2].map((i) => (
-          <div
-            key={i}
-            className="flex-shrink-0 rounded-card overflow-hidden bg-charcoal"
-            style={{ width: CARD_WIDTH, height: 160 }}
-          >
-            <div className="skeleton w-full h-full" />
-          </div>
-        ))}
+      <div style={{ padding: '0 20px', marginBottom: 24 }}>
+        <div style={{
+          background: '#2a2a2e',
+          borderRadius: 16,
+          height: 320,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          color: '#888',
+          fontSize: 14,
+        }}>
+          Finding movies for you...
+        </div>
       </div>
     );
   }
 
-  if (!items || items.length === 0) {
-    return (
-      <div className="text-center py-8 bg-charcoal rounded-card">
-        <p className="text-muted text-sm">No discoveries right now. Check back later!</p>
-      </div>
-    );
-  }
+  if (!items || items.length === 0) return null;
 
   return (
-    <>
-      <div ref={constraintsRef} className="overflow-hidden">
-        <motion.div
-          className="flex"
-          style={{ gap: CARD_GAP }}
-          animate={{ x: -(currentIndex * (CARD_WIDTH + CARD_GAP)) }}
-          transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-          drag="x"
-          dragConstraints={constraintsRef}
-          dragElastic={0.1}
-          onDragEnd={handleDragEnd}
-        >
+    <div style={{ marginBottom: 24, position: 'relative' }}>
+      {/* Carousel viewport */}
+      <div
+        ref={containerRef}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        style={{
+          overflow: 'hidden',
+          padding: '0 20px',
+          touchAction: 'pan-y',
+        }}
+      >
+        {/* Sliding track */}
+        <div style={{
+          display: 'flex',
+          transition: isDragging.current ? 'none' : 'transform 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
+          transform: `translateX(-${currentIndex * 100}%)`,
+        }}>
           {items.map((item, i) => (
-            <motion.div
-              key={item.id || i}
-              className="flex-shrink-0 rounded-card overflow-hidden bg-charcoal border border-smoke cursor-pointer"
-              style={{ width: CARD_WIDTH }}
-              whileTap={{ scale: 0.97 }}
-              onClick={() => setSelectedItem(item)}
+            <div
+              key={item.id}
+              style={{
+                flex: '0 0 100%',
+                minWidth: '100%',
+                paddingRight: i < items.length - 1 ? 0 : 0,
+              }}
             >
-              <div className="relative" style={{ height: 140 }}>
-                {item.poster_url ? (
-                  <img
-                    src={item.poster_url}
-                    alt={item.title}
-                    className="w-full h-full object-cover"
-                    loading="lazy"
-                    draggable={false}
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center bg-smoke text-muted text-2xl">
-                    🍿
-                  </div>
-                )}
-                {item.tmdb_rating && (
-                  <div
-                    className="absolute top-2 right-2 px-2 py-0.5 rounded-full text-xs font-bold"
-                    style={{ backgroundColor: 'rgba(0,0,0,0.7)', color: '#E8A317' }}
-                  >
-                    {item.tmdb_rating}/10
-                  </div>
-                )}
-              </div>
-              <div className="p-3">
-                <p className="text-sm font-bold text-cream truncate">{item.title}</p>
-                <p className="text-xs text-muted truncate">
-                  {item.year}{item.genre ? ` · ${item.genre}` : ''}
-                </p>
-              </div>
-            </motion.div>
-          ))}
-        </motion.div>
+              <div style={{
+                background: '#2a2a2e',
+                borderRadius: 16,
+                overflow: 'hidden',
+                position: 'relative',
+              }}>
+                {/* Poster */}
+                <div style={{ position: 'relative', width: '100%', aspectRatio: '2/3' }}>
+                  {item.poster_url ? (
+                    <Image
+                      src={item.poster_url}
+                      alt={item.title}
+                      fill
+                      style={{ objectFit: 'cover' }}
+                      sizes="(max-width: 480px) 100vw, 440px"
+                    />
+                  ) : (
+                    <div style={{
+                      width: '100%',
+                      height: '100%',
+                      background: '#1a1a1e',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: '#666',
+                      fontSize: 48,
+                    }}>🎬</div>
+                  )}
 
-        {/* Pagination dots */}
-        {items.length > 1 && (
-          <div className="flex justify-center gap-1.5 mt-3">
-            {items.map((_, i) => (
-              <div
-                key={i}
-                className="rounded-full transition-all duration-200"
-                style={{
-                  width: i === currentIndex ? 16 : 6,
-                  height: 6,
-                  backgroundColor: i === currentIndex ? '#E8A317' : '#3A3A3A',
-                }}
-              />
-            ))}
-          </div>
-        )}
-      </div>
+                  {/* Gradient overlay at bottom of poster */}
+                  <div style={{
+                    position: 'absolute',
+                    bottom: 0,
+                    left: 0,
+                    right: 0,
+                    height: '50%',
+                    background: 'linear-gradient(transparent, rgba(42,42,46,0.9), #2a2a2e)',
+                    pointerEvents: 'none',
+                  }} />
 
-      {/* Detail popup */}
-      <AnimatePresence>
-        {selectedItem && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-end justify-center bg-rich-black/80"
-            style={{ touchAction: 'none' }}
-            onClick={(e) => { if (e.target === e.currentTarget) setSelectedItem(null); }}
-          >
-            <motion.div
-              initial={{ y: '100%' }}
-              animate={{ y: 0 }}
-              exit={{ y: '100%' }}
-              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-              className="w-full max-w-[480px] bg-charcoal rounded-t-2xl flex flex-col"
-              onClick={(e) => e.stopPropagation()}
-              style={{ maxHeight: '85vh' }}
-            >
-              {/* Drag handle */}
-              <div className="flex justify-center pt-3 pb-2 flex-shrink-0">
-                <div className="w-10 h-1 rounded-full bg-smoke" />
-              </div>
-
-              {/* Scrollable content */}
-              <div className="px-5 overflow-y-auto flex-1" style={{ WebkitOverflowScrolling: 'touch' as any, overscrollBehavior: 'contain' }}>
-                <div className="flex gap-4 mb-4">
-                  <div className="w-28 h-40 flex-shrink-0 rounded-btn overflow-hidden bg-smoke">
-                    {selectedItem.poster_url ? (
-                      <img src={selectedItem.poster_url} alt={selectedItem.title} className="w-full h-full object-cover" />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-3xl">🍿</div>
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0 py-1">
-                    <h3 className="text-lg font-bold text-cream leading-tight mb-1">{selectedItem.title}</h3>
-                    <div className="flex items-center gap-2 text-sm text-muted mb-2">
-                      {selectedItem.year && <span>{selectedItem.year}</span>}
-                      {selectedItem.type && (
-                        <>
-                          <span>·</span>
-                          <span>{selectedItem.type === 'movie' ? 'Movie' : 'Show'}</span>
-                        </>
-                      )}
-                    </div>
-                    {selectedItem.genre && <p className="text-xs text-muted mb-2">{selectedItem.genre}</p>}
-                    {selectedItem.tmdb_rating && (
-                      <div className="flex items-center gap-1">
-                        <span className="text-warm-gold font-bold text-sm">{selectedItem.tmdb_rating}/10</span>
-                        <span className="text-xs text-muted">TMDB</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-                {selectedItem.overview && (
-                  <p className="text-sm text-muted leading-relaxed mb-4">{selectedItem.overview}</p>
-                )}
-              </div>
-
-              {/* Buttons - PINNED at bottom, always visible */}
-              <div className="flex gap-3 px-5 py-4 flex-shrink-0 border-t border-smoke" style={{ paddingBottom: 'max(16px, env(safe-area-inset-bottom))' }}>
-                {savedIds.has(selectedItem.id) ? (
-                  <div className="flex-1 flex items-center justify-center gap-2 py-3 rounded-btn font-bold text-sm bg-smoke text-muted min-h-[48px]">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="#E8A317" stroke="#E8A317" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
-                    </svg>
-                    Saved to your list
-                  </div>
-                ) : (
+                  {/* Bookmark icon - top right of card */}
                   <button
-                    onClick={() => handleSaveItem(selectedItem)}
-                    disabled={saving}
-                    className="flex-1 flex items-center justify-center gap-2 py-3 rounded-btn font-bold text-sm btn-press min-h-[48px]"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (!savedIds.has(item.id)) handleSave(item);
+                    }}
+                    disabled={savingIds.has(item.id)}
                     style={{
-                      backgroundColor: saving ? '#3A3A3A' : '#E8A317',
-                      color: saving ? '#8A8A7A' : '#1A1A1A',
+                      position: 'absolute',
+                      top: 12,
+                      right: 12,
+                      width: 40,
+                      height: 40,
+                      borderRadius: 20,
+                      background: savedIds.has(item.id)
+                        ? 'rgba(218, 165, 32, 0.9)'
+                        : 'rgba(0, 0, 0, 0.6)',
+                      border: 'none',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      cursor: 'pointer',
+                      zIndex: 5,
+                      backdropFilter: 'blur(8px)',
+                      WebkitBackdropFilter: 'blur(8px)',
+                      transition: 'all 0.2s ease',
+                      opacity: savingIds.has(item.id) ? 0.5 : 1,
                     }}
                   >
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
-                    </svg>
-                    {saving ? 'Saving...' : 'Save to my list'}
+                    {savingIds.has(item.id) ? (
+                      <span style={{ fontSize: 18, animation: 'spin 1s linear infinite' }}>⏳</span>
+                    ) : savedIds.has(item.id) ? (
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="#fff" stroke="#fff" strokeWidth="2">
+                        <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
+                      </svg>
+                    ) : (
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2">
+                        <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
+                      </svg>
+                    )}
                   </button>
-                )}
-                <button
-                  onClick={() => setSelectedItem(null)}
-                  className="px-5 py-3 rounded-btn text-sm font-medium btn-press min-h-[48px] bg-smoke text-muted"
-                >
-                  Close
-                </button>
+
+                  {/* Title and info overlaid on poster bottom */}
+                  <div style={{
+                    position: 'absolute',
+                    bottom: 0,
+                    left: 0,
+                    right: 0,
+                    padding: '0 16px 12px',
+                    zIndex: 2,
+                  }}>
+                    <h3 style={{
+                      fontSize: 20,
+                      fontWeight: 700,
+                      color: '#fff',
+                      margin: '0 0 6px 0',
+                      lineHeight: 1.2,
+                      textShadow: '0 1px 4px rgba(0,0,0,0.5)',
+                    }}>{item.title}</h3>
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 8,
+                      fontSize: 13,
+                      color: '#ccc',
+                    }}>
+                      {item.year && <span>{item.year}</span>}
+                      {item.tmdb_rating > 0 && (
+                        <span style={{ color: '#DAA520' }}>
+                          ★ {item.tmdb_rating.toFixed(1)}
+                        </span>
+                      )}
+                      {item.genre && <span style={{ opacity: 0.7 }}>{item.genre.split(',')[0]}</span>}
+                      <span style={{
+                        background: item.type === 'movie' ? '#DAA520' : '#4a9eff',
+                        color: '#000',
+                        padding: '1px 6px',
+                        borderRadius: 4,
+                        fontSize: 11,
+                        fontWeight: 600,
+                        textTransform: 'uppercase',
+                      }}>{item.type === 'movie' ? 'Film' : 'Series'}</span>
+                    </div>
+                  </div>
+                </div>
               </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Pagination dots */}
+      <div style={{
+        display: 'flex',
+        justifyContent: 'center',
+        gap: 6,
+        marginTop: 12,
+      }}>
+        {items.map((_, i) => (
+          <button
+            key={i}
+            onClick={() => goTo(i)}
+            style={{
+              width: currentIndex === i ? 20 : 8,
+              height: 8,
+              borderRadius: 4,
+              background: currentIndex === i ? '#DAA520' : 'rgba(255,255,255,0.2)',
+              border: 'none',
+              padding: 0,
+              cursor: 'pointer',
+              transition: 'all 0.3s ease',
+            }}
+          />
+        ))}
+      </div>
+
+      {/* Arrow buttons for desktop */}
+      {currentIndex > 0 && (
+        <button
+          onClick={() => goTo(currentIndex - 1)}
+          style={{
+            position: 'absolute',
+            left: 8,
+            top: '45%',
+            transform: 'translateY(-50%)',
+            width: 36,
+            height: 36,
+            borderRadius: 18,
+            background: 'rgba(0,0,0,0.5)',
+            border: 'none',
+            color: '#fff',
+            fontSize: 18,
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 3,
+            backdropFilter: 'blur(4px)',
+          }}
+        >‹</button>
+      )}
+      {currentIndex < items.length - 1 && (
+        <button
+          onClick={() => goTo(currentIndex + 1)}
+          style={{
+            position: 'absolute',
+            right: 8,
+            top: '45%',
+            transform: 'translateY(-50%)',
+            width: 36,
+            height: 36,
+            borderRadius: 18,
+            background: 'rgba(0,0,0,0.5)',
+            border: 'none',
+            color: '#fff',
+            fontSize: 18,
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 3,
+            backdropFilter: 'blur(4px)',
+          }}
+        >›</button>
+      )}
+    </div>
   );
 }
