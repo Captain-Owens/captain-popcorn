@@ -117,6 +117,19 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  // Check for existing rec with same tmdb_id to prevent duplicates
+  if (tmdb_id) {
+    const { data: existing } = await supabase
+      .from('recommendations')
+      .select('*')
+      .eq('tmdb_id', tmdb_id)
+      .limit(1)
+      .single();
+    if (existing) {
+      return NextResponse.json(existing, { status: 200 });
+    }
+  }
+
   const { data, error } = await supabase
     .from('recommendations')
     .insert({

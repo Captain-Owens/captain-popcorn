@@ -23,7 +23,6 @@ interface DiscoverCarouselProps {
 
 export default function DiscoverCarousel({ items, loading, savedTmdbIds, onSaveItem }: DiscoverCarouselProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [savingIds, setSavingIds] = useState<Set<number>>(new Set());
   const touchStartX = useRef(0);
   const touchStartY = useRef(0);
   const touchDelta = useRef(0);
@@ -61,19 +60,11 @@ export default function DiscoverCarousel({ items, loading, savedTmdbIds, onSaveI
     isDragging.current = false;
   };
 
-  const handleSave = async (item: DiscoverItem) => {
-    if (savingIds.has(item.id)) return;
+  const handleSave = (item: DiscoverItem) => {
     if (savedTmdbIds?.has(item.id)) return;
     if (!onSaveItem) return;
-
-    setSavingIds(prev => { const s = new Set(prev); s.add(item.id); return s; });
-    try {
-      await onSaveItem(item);
-    } catch (err) {
-      console.error('Save failed:', err);
-    } finally {
-      setSavingIds(prev => { const s = new Set(prev); s.delete(item.id); return s; });
-    }
+    // Fire and forget - parent handles optimistic state
+    onSaveItem(item);
   };
 
   if (loading) {
@@ -105,7 +96,7 @@ export default function DiscoverCarousel({ items, loading, savedTmdbIds, onSaveI
         }}>
           {items.map((item) => {
             const isSaved = savedTmdbIds?.has(item.id) || false;
-            const isSaving = savingIds.has(item.id);
+            
             return (
               <div key={item.id} style={{ flex: '0 0 100%', minWidth: '100%' }}>
                 <div style={{ background: '#2a2a2e', borderRadius: 16, overflow: 'hidden', position: 'relative' }}>
@@ -135,18 +126,14 @@ export default function DiscoverCarousel({ items, loading, savedTmdbIds, onSaveI
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                         cursor: 'pointer', zIndex: 10, padding: 0,
                         backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)',
-                        transition: 'all 0.2s ease', opacity: isSaving ? 0.5 : 1,
+                        transition: 'all 0.2s ease', 
                       }}
                     >
-                      {isSaving ? (
-                        <span style={{ fontSize: 18 }}>⏳</span>
-                      ) : (
-                        <svg width="22" height="22" viewBox="0 0 24 24"
+                      <svg width="22" height="22" viewBox="0 0 24 24"
                           fill={isSaved ? '#fff' : 'none'} stroke="#fff"
                           strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                           <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
                         </svg>
-                      )}
                     </button>
 
                     <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0,
