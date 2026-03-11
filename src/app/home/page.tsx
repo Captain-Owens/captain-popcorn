@@ -214,9 +214,9 @@ export default function HomePage() {
 
   // Sync savedTmdbIds from savedIds + recommendations
   useEffect(() => {
-    if (recs.length > 0 && savedIds.size > 0) {
+    if (feed.length > 0 && savedIds.size > 0) {
       const tmdbSet = new Set<number>();
-      recs.forEach((r: any) => {
+      feed.forEach((r: any) => {
         if (savedIds.has(r.id) && r.tmdb_id) tmdbSet.add(Number(r.tmdb_id));
       });
       setSavedTmdbIds(tmdbSet);
