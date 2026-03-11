@@ -50,9 +50,9 @@ export default function HomePage() {
     setMemberName(name || '');
   }, [router]);
 
-  const fetchData = useCallback(async () => {
+  const fetchData = useCallback(async (showLoading = true) => {
     if (!memberId) return;
-    setLoading(true);
+    if (showLoading) setLoading(true);
 
     try {
       const [res, savedRes] = await Promise.all([
@@ -66,7 +66,7 @@ export default function HomePage() {
         setSavedIds(new Set(savedData.map((s: any) => s.recommendation_id)));
       }
     } catch {}
-    setLoading(false);
+    if (showLoading) setLoading(false);
   }, [memberId]);
 
   useEffect(() => {
@@ -91,8 +91,8 @@ export default function HomePage() {
     if (!memberId) return;
     const channel = supabase
       .channel('home-feed')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'recommendations' }, () => fetchData())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'watched' }, () => fetchData())
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'recommendations' }, () => fetchData(false))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'watched' }, () => {})
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, [memberId, fetchData]);
@@ -114,7 +114,7 @@ export default function HomePage() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ member_id: memberId, recommendation_id: recId }),
     });
-    fetchData();
+    fetchData(false);
   }
 
   async function handleSave(recId: string) {
