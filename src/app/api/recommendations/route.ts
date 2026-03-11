@@ -125,7 +125,7 @@ export async function POST(req: NextRequest) {
       .eq('tmdb_id', Number(tmdb_id))
       .limit(1);
     if (existing && existing.length > 0) {
-      return NextResponse.json(existing[0], { status: 200 });
+      return NextResponse.json(existing[0], { status: 200 }); // existing rec, no duplicate
     }
   }
 
@@ -143,6 +143,7 @@ export async function POST(req: NextRequest) {
       platform: platform || null,
       rating: rating || null,
       comment: comment ? comment.slice(0, 280) : null,
+      source: body.source || 'manual',
     })
     .select()
     .single();

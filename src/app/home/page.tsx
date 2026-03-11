@@ -63,7 +63,7 @@ export default function HomePage() {
       ]);
       const data = await res.json();
       const savedData = await savedRes.json();
-      if (Array.isArray(data)) setFeed(data);
+      if (Array.isArray(data)) setFeed(data.filter((r: any) => !r.source || r.source === 'manual'));
       if (Array.isArray(savedData)) {
         setSavedIds(new Set(savedData.map((s: any) => s.recommendation_id)));
       }
@@ -159,6 +159,7 @@ export default function HomePage() {
           type: item.type,
           overview: item.overview,
           member_id: memberId,
+          source: 'discover',
         }),
       });
       let recId: string | null = null;
