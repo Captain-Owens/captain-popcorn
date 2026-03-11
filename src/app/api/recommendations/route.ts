@@ -122,11 +122,10 @@ export async function POST(req: NextRequest) {
     const { data: existing } = await supabase
       .from('recommendations')
       .select('*')
-      .eq('tmdb_id', tmdb_id)
-      .limit(1)
-      .single();
-    if (existing) {
-      return NextResponse.json(existing, { status: 200 });
+      .eq('tmdb_id', String(tmdb_id))
+      .limit(1);
+    if (existing && existing.length > 0) {
+      return NextResponse.json(existing[0], { status: 200 });
     }
   }
 

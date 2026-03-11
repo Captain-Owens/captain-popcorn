@@ -223,14 +223,18 @@ export default function HomePage() {
     };
   }, []);
 
-  // Sync savedTmdbIds from savedIds + recommendations
+  // Sync savedTmdbIds from savedIds + recommendations (merge, don't replace)
   useEffect(() => {
-    if (feed.length > 0 && savedIds.size > 0) {
-      const tmdbSet = new Set<number>();
-      feed.forEach((r: any) => {
-        if (savedIds.has(r.id) && r.tmdb_id) tmdbSet.add(Number(r.tmdb_id));
+    if (feed.length > 0) {
+      setSavedTmdbIds(prev => {
+        const merged = new Set(prev);
+        feed.forEach((r: any) => {
+          if (savedIds.has(r.id) && r.tmdb_id) {
+            merged.add(Number(r.tmdb_id));
+          }
+        });
+        return merged;
       });
-      setSavedTmdbIds(tmdbSet);
     }
   }, [feed, savedIds]);
 
