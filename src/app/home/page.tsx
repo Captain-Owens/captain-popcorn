@@ -138,29 +138,7 @@ export default function HomePage() {
   }
 
 
-  async function handleSaveDiscover(item: { id: number; title: string; poster_url: string; year: string; genre: string; tmdb_rating: number; type: string; overview: string }
-  async function handleUnsaveDiscover(tmdbId: number) {
-    // Optimistic: turn gray immediately
-    setSavedTmdbIds(prev => { const s = new Set(prev); s.delete(tmdbId); return s; });
-
-    try {
-      // Find the recommendation by tmdb_id
-      const match = feed.find((r: any) => Number(r.tmdb_id) === tmdbId);
-      if (match) {
-        setSavedIds(prev => { const s = new Set(prev); s.delete(match.id); return s; });
-        await fetch('/api/saved', {
-          method: 'DELETE',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ member_id: memberId, recommendation_id: match.id }),
-        });
-      }
-    } catch (err) {
-      // Revert on failure
-      setSavedTmdbIds(prev => { const s = new Set(prev); s.add(tmdbId); return s; });
-      console.error('Unsave failed:', err);
-    }
-  }
-) {
+  async function handleSaveDiscover(item: { id: number; title: string; poster_url: string; year: string; genre: string; tmdb_rating: number; type: string; overview: string }) {
     if (!memberId) return;
     // Optimistic: turn yellow immediately
     setSavedTmdbIds(prev => { const s = new Set(prev); s.add(item.id); return s; });
@@ -194,12 +172,28 @@ export default function HomePage() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ member_id: memberId, recommendation_id: recId }),
         });
-        // Do NOT call fetchData - we don't want discover saves showing in recently added feed
       }
     } catch (err) {
-      // Revert optimistic update on failure
       setSavedTmdbIds(prev => { const s = new Set(prev); s.delete(item.id); return s; });
       console.error('Save failed:', err);
+    }
+  }
+
+  async function handleUnsaveDiscover(tmdbId: number) {
+    setSavedTmdbIds(prev => { const s = new Set(prev); s.delete(tmdbId); return s; });
+    try {
+      const match = feed.find((r: any) => Number(r.tmdb_id) === tmdbId);
+      if (match) {
+        setSavedIds(prev => { const s = new Set(prev); s.delete(match.id); return s; });
+        await fetch('/api/saved', {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ member_id: memberId, recommendation_id: match.id }),
+        });
+      }
+    } catch (err) {
+      setSavedTmdbIds(prev => { const s = new Set(prev); s.add(tmdbId); return s; });
+      console.error('Unsave failed:', err);
     }
   }
 
