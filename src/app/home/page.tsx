@@ -154,7 +154,7 @@ export default function HomePage() {
         tmdb_rating: item.tmdb_rating,
         type: item.type,
         overview: item.overview,
-        recommended_by: memberId,
+        member_id: memberId,
       }),
     });
     let recId: string | null = null;
