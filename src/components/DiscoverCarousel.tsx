@@ -192,32 +192,26 @@ export default function DiscoverCarousel({ items, loading }: DiscoverCarouselPro
               animate={{ y: 0 }}
               exit={{ y: '100%' }}
               transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-              className="w-full max-w-[480px] bg-charcoal rounded-t-2xl overflow-hidden"
+              className="w-full max-w-[480px] bg-charcoal rounded-t-2xl flex flex-col"
               style={{ maxHeight: '85vh' }}
             >
               {/* Drag handle */}
-              <div className="flex justify-center pt-3 pb-2">
+              <div className="flex justify-center pt-3 pb-2 flex-shrink-0">
                 <div className="w-10 h-1 rounded-full bg-smoke" />
               </div>
 
-              <div className="px-5 pb-6 overflow-y-auto" style={{ maxHeight: 'calc(85vh - 20px)', WebkitOverflowScrolling: 'touch' }}>
-                {/* Poster + info */}
+              {/* Scrollable content */}
+              <div className="px-5 overflow-y-auto flex-1" style={{ WebkitOverflowScrolling: 'touch' as any }}>
                 <div className="flex gap-4 mb-4">
                   <div className="w-28 h-40 flex-shrink-0 rounded-btn overflow-hidden bg-smoke">
                     {selectedItem.poster_url ? (
-                      <img
-                        src={selectedItem.poster_url}
-                        alt={selectedItem.title}
-                        className="w-full h-full object-cover"
-                      />
+                      <img src={selectedItem.poster_url} alt={selectedItem.title} className="w-full h-full object-cover" />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-3xl">🍿</div>
                     )}
                   </div>
                   <div className="flex-1 min-w-0 py-1">
-                    <h3 className="text-lg font-bold text-cream leading-tight mb-1">
-                      {selectedItem.title}
-                    </h3>
+                    <h3 className="text-lg font-bold text-cream leading-tight mb-1">{selectedItem.title}</h3>
                     <div className="flex items-center gap-2 text-sm text-muted mb-2">
                       {selectedItem.year && <span>{selectedItem.year}</span>}
                       {selectedItem.type && (
@@ -227,60 +221,51 @@ export default function DiscoverCarousel({ items, loading }: DiscoverCarouselPro
                         </>
                       )}
                     </div>
-                    {selectedItem.genre && (
-                      <p className="text-xs text-muted mb-2">{selectedItem.genre}</p>
-                    )}
+                    {selectedItem.genre && <p className="text-xs text-muted mb-2">{selectedItem.genre}</p>}
                     {selectedItem.tmdb_rating && (
                       <div className="flex items-center gap-1">
-                        <span className="text-warm-gold font-bold text-sm">
-                          {selectedItem.tmdb_rating}/10
-                        </span>
+                        <span className="text-warm-gold font-bold text-sm">{selectedItem.tmdb_rating}/10</span>
                         <span className="text-xs text-muted">TMDB</span>
                       </div>
                     )}
                   </div>
                 </div>
-
-                {/* Overview */}
                 {selectedItem.overview && (
-                  <p className="text-sm text-muted leading-relaxed mb-5">
-                    {selectedItem.overview}
-                  </p>
+                  <p className="text-sm text-muted leading-relaxed mb-4">{selectedItem.overview}</p>
                 )}
+              </div>
 
-                {/* Action buttons */}
-                <div className="flex gap-3">
-                  {savedIds.has(selectedItem.id) ? (
-                    <div className="flex-1 flex items-center justify-center gap-2 py-3 rounded-btn font-bold text-sm bg-smoke text-muted min-h-[48px]">
-                      <svg width="18" height="18" viewBox="0 0 24 24" fill="#E8A317" stroke="#E8A317" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
-                      </svg>
-                      Saved to your list
-                    </div>
-                  ) : (
-                    <button
-                      onClick={() => handleSaveItem(selectedItem)}
-                      disabled={saving}
-                      className="flex-1 flex items-center justify-center gap-2 py-3 rounded-btn font-bold text-sm btn-press min-h-[48px]"
-                      style={{
-                        backgroundColor: saving ? '#3A3A3A' : '#E8A317',
-                        color: saving ? '#8A8A7A' : '#1A1A1A',
-                      }}
-                    >
-                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
-                      </svg>
-                      {saving ? 'Saving...' : 'Save to my list'}
-                    </button>
-                  )}
-
+              {/* Buttons - PINNED at bottom, always visible */}
+              <div className="flex gap-3 px-5 py-4 flex-shrink-0 border-t border-smoke" style={{ paddingBottom: 'max(16px, env(safe-area-inset-bottom))' }}>
+                {savedIds.has(selectedItem.id) ? (
+                  <div className="flex-1 flex items-center justify-center gap-2 py-3 rounded-btn font-bold text-sm bg-smoke text-muted min-h-[48px]">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="#E8A317" stroke="#E8A317" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
+                    </svg>
+                    Saved to your list
+                  </div>
+                ) : (
                   <button
-                    onClick={() => setSelectedItem(null)}
-                    className="px-5 py-3 rounded-btn text-sm font-medium btn-press min-h-[48px] bg-smoke text-muted"
+                    onClick={() => handleSaveItem(selectedItem)}
+                    disabled={saving}
+                    className="flex-1 flex items-center justify-center gap-2 py-3 rounded-btn font-bold text-sm btn-press min-h-[48px]"
+                    style={{
+                      backgroundColor: saving ? '#3A3A3A' : '#E8A317',
+                      color: saving ? '#8A8A7A' : '#1A1A1A',
+                    }}
                   >
-                    Close
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
+                    </svg>
+                    {saving ? 'Saving...' : 'Save to my list'}
                   </button>
-                </div>
+                )}
+                <button
+                  onClick={() => setSelectedItem(null)}
+                  className="px-5 py-3 rounded-btn text-sm font-medium btn-press min-h-[48px] bg-smoke text-muted"
+                >
+                  Close
+                </button>
               </div>
             </motion.div>
           </motion.div>
