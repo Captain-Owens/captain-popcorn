@@ -88,6 +88,8 @@ export default function BrowsePage() {
       return;
     }
     setMemberId(id);
+    const memberName = localStorage.getItem('captain-popcorn-member-name');
+    setIsAdmin(memberName === 'Captain');
   }, [router]);
 
   useEffect(() => {

@@ -50,6 +50,7 @@ export default function HomePage() {
     }
     setMemberId(id);
     setMemberName(name || '');
+    setIsAdmin(name === 'Captain');
   }, [router]);
 
   const fetchData = useCallback(async (showLoading = true) => {

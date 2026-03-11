@@ -164,25 +164,10 @@ export default function RecommendationCard({
                     onDelete(rec.id);
                   }
                 }}
-                style={{
-                  position: 'absolute',
-                  top: 8,
-                  left: 8,
-                  width: 32,
-                  height: 32,
-                  borderRadius: 16,
-                  background: 'rgba(220, 38, 38, 0.8)',
-                  border: 'none',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  cursor: 'pointer',
-                  zIndex: 10,
-                  backdropFilter: 'blur(4px)',
-                  WebkitBackdropFilter: 'blur(4px)',
-                }}
+                className="flex items-center gap-1 px-2 py-1.5 rounded-btn text-xs font-medium btn-press min-h-[28px]"
+                style={{ background: 'rgba(220, 38, 38, 0.8)', color: '#fff', border: 'none' }}
               >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                   <polyline points="3 6 5 6 21 6" />
                   <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
                 </svg>

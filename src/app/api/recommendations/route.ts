@@ -97,6 +97,7 @@ export async function GET(req: NextRequest) {
       watch_count: watchCounts[r.id] || 0,
       comment_count: commentCounts[r.id] || 0,
       is_watched: false,
+      source: r.source || 'manual',
     }));
 
   if (sort === 'most_watched') {
