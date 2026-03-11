@@ -153,6 +153,16 @@ export default function HomePage() {
   const visibleFeed = feed ? feed.slice(0, showCount) : [];
   const remaining = feed ? feed.length - showCount : 0;
 
+  // Prevent Chrome address bar bounce on overscroll
+  useEffect(() => {
+    document.documentElement.style.overscrollBehavior = 'none';
+    document.body.style.overscrollBehavior = 'none';
+    return () => {
+      document.documentElement.style.overscrollBehavior = '';
+      document.body.style.overscrollBehavior = '';
+    };
+  }, []);
+
   return (
     <div className="px-4 py-6 pb-24">
       {/* Logo */}
