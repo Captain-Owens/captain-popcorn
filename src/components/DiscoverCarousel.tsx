@@ -65,7 +65,7 @@ export default function DiscoverCarousel({ items, loading }: DiscoverCarouselPro
   const handleSave = async (item: DiscoverItem) => {
     if (savingIds.has(item.id) || savedIds.has(item.id)) return;
 
-    const memberId = typeof window !== 'undefined' ? localStorage.getItem('selectedMemberId') : null;
+    const memberId = typeof window !== 'undefined' ? localStorage.getItem('captain-popcorn-member-id') : null;
     if (!memberId) {
       alert('Please select a user first');
       return;
