@@ -34,6 +34,7 @@ export default function HomePage() {
   // Saved
   const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
   const [savedTmdbIds, setSavedTmdbIds] = useState<Set<number>>(new Set());
+  const [isAdmin, setIsAdmin] = useState(false);
 
   // Comments
   const [commentsOpen, setCommentsOpen] = useState(false);
@@ -197,6 +198,16 @@ export default function HomePage() {
     }
   }
 
+
+  async function handleDelete(recId: string) {
+    await fetch('/api/recommendations', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: recId }),
+    });
+    fetchData(false);
+  }
+
   function handleOpenComments(recId: string, recTitle: string) {
     setCommentsRecId(recId);
     setCommentsRecTitle(recTitle);
@@ -314,6 +325,8 @@ export default function HomePage() {
                   onUnwatch={handleUnwatch}
                   onComment={handleOpenComments}
                   onSave={handleSave}
+                  onDelete={handleDelete}
+                  isAdmin={isAdmin}
                   onUnsave={handleUnsave}
                   isSaved={savedIds.has(rec.id)}
                 />

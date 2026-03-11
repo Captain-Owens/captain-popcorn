@@ -59,6 +59,7 @@ export default function BrowsePage() {
   const [savedLoading, setSavedLoading] = useState(false);
 
   // Saved IDs for bookmark state
+  const [isAdmin, setIsAdmin] = useState(false);
   const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
 
   // Filters
@@ -230,6 +231,16 @@ export default function BrowsePage() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ member_id: memberId, recommendation_id: recId }),
     });
+  }
+
+
+  async function handleDelete(recId: string) {
+    await fetch('/api/recommendations', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: recId }),
+    });
+    fetchData(false);
   }
 
   function handleOpenComments(recId: string, recTitle: string) {
@@ -451,6 +462,12 @@ export default function BrowsePage() {
                     onUnwatch={handleUnwatch}
                     onComment={handleOpenComments}
                     onSave={handleSave}
+                  onDelete={handleDelete}
+                  isAdmin={isAdmin}
+                  onDelete={handleDelete}
+                  isAdmin={isAdmin}
+                  onDelete={handleDelete}
+                  isAdmin={isAdmin}
                     onUnsave={handleUnsave}
                     isSaved={savedIds.has(rec.id)}
                   />

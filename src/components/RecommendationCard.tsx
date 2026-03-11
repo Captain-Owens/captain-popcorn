@@ -5,6 +5,8 @@ import { Recommendation } from '@/lib/types';
 import { PLATFORMS } from '@/lib/constants';
 
 interface RecommendationCardProps {
+  isAdmin?: boolean;
+  onDelete?: (id: string) => void;
   rec: Recommendation;
   onWatch: (id: string) => void;
   onUnwatch?: (id: string) => void;
@@ -22,6 +24,8 @@ export default function RecommendationCard({
   onComment,
   onSave,
   onUnsave,
+  isAdmin,
+  onDelete,
   isSaved = false,
   showWatched = false,
 }: RecommendationCardProps) {
@@ -150,6 +154,39 @@ export default function RecommendationCard({
             )}
             {rec.watch_count !== undefined && rec.watch_count > 0 && (
               <span>{rec.watch_count} watched</span>
+            )}
+
+            {isAdmin && onDelete && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (confirm('Delete "' + rec.title + '" from the catalogue? This removes all watches, comments, and saves for this title.')) {
+                    onDelete(rec.id);
+                  }
+                }}
+                style={{
+                  position: 'absolute',
+                  top: 8,
+                  left: 8,
+                  width: 32,
+                  height: 32,
+                  borderRadius: 16,
+                  background: 'rgba(220, 38, 38, 0.8)',
+                  border: 'none',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  zIndex: 10,
+                  backdropFilter: 'blur(4px)',
+                  WebkitBackdropFilter: 'blur(4px)',
+                }}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="3 6 5 6 21 6" />
+                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                </svg>
+              </button>
             )}
             {(onSave || onUnsave) && (
               <button
